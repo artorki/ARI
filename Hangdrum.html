@@ -1,0 +1,2000 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شبیه‌ساز تخصصی واقعیت افزوده هنگ‌درام | AR Handpan Studio Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- MediaPipe Hands & Camera Utils -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        :root {
+            --bronze-light: #e6c280;
+            --bronze-mid: #b38748;
+            --bronze-dark: #3a2914;
+            --neon-cyan: #00f3ff;
+            --neon-amber: #ffae00;
+        }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #090a0f;
+            font-family: 'Vazirmatn', sans-serif;
+            color: #f1f5f9;
+        }
+        .mono-font {
+            font-family: 'JetBrains Mono', monospace;
+            direction: ltr;
+            display: inline-block;
+        }
+        .glass-panel {
+            background: rgba(13, 17, 26, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(226, 184, 114, 0.22);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+        }
+        .glass-btn {
+            background: rgba(30, 38, 56, 0.75);
+            border: 1px solid rgba(226, 184, 114, 0.3);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-btn:hover {
+            background: rgba(226, 184, 114, 0.2);
+            border-color: rgba(226, 184, 114, 0.7);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(226, 184, 114, 0.2);
+        }
+        .glass-btn:active {
+            transform: translateY(1px);
+        }
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.12);
+            height: 5px;
+            border-radius: 4px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #e6c280;
+            cursor: pointer;
+            border: 2px solid #090a0f;
+            box-shadow: 0 0 8px rgba(230, 194, 128, 0.8);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.4);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(230, 194, 128, 0.4);
+            border-radius: 4px;
+        }
+        @keyframes pulse-record {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.18); }
+        }
+        .record-dot {
+            animation: pulse-record 1.2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden select-none">
+
+    <!-- Hidden Video for MediaPipe Input -->
+    <video id="webcam-video" class="hidden" playsinline muted></video>
+
+    <!-- Main Fullscreen Interactive AR Canvas -->
+    <canvas id="ar-canvas" class="absolute inset-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"></canvas>
+
+    <!-- Top Navigation & Quick Action Bar -->
+    <header class="absolute top-3 left-3 right-3 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Brand & Camera Status -->
+        <div class="glass-panel px-4 py-2 rounded-2xl flex items-center gap-3 pointer-events-auto">
+            <div class="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500/30 to-amber-900/40 border border-amber-400/40">
+                <svg class="w-5 h-5 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" stroke-width="1.8"/>
+                    <circle cx="12" cy="12" r="3" stroke-width="1.8"/>
+                    <circle cx="12" cy="6" r="1.2" fill="currentColor"/>
+                    <circle cx="17" cy="9" r="1.2" fill="currentColor"/>
+                    <circle cx="17" cy="15" r="1.2" fill="currentColor"/>
+                    <circle cx="12" cy="18" r="1.2" fill="currentColor"/>
+                    <circle cx="7" cy="15" r="1.2" fill="currentColor"/>
+                    <circle cx="7" cy="9" r="1.2" fill="currentColor"/>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-sm md:text-base text-amber-200 tracking-wide">هنگ‌درام واقعیت افزوده</h1>
+                    <span class="text-[10px] mono-font uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">Modal Synth 3D</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-300 mt-0.5">
+                    <span id="cam-indicator" class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                    <span id="cam-status-text">در انتظار فعال‌سازی موتور صوتی و دوربین...</span>
+                    <span class="text-slate-500">|</span>
+                    <span id="fps-counter" class="mono-font text-cyan-400 font-semibold">0 FPS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scale Selector, Audio Recorder, Panels Toggles -->
+        <div class="glass-panel px-3 py-2 rounded-2xl flex flex-wrap items-center gap-2 pointer-events-auto">
+            <!-- Scale Selection -->
+            <div class="flex items-center gap-1.5 bg-slate-900/70 px-2.5 py-1 rounded-xl border border-slate-700/70">
+                <label for="scale-select" class="text-xs text-amber-200/90 font-medium">گام ساز:</label>
+                <select id="scale-select" class="bg-transparent text-xs md:text-sm font-semibold text-white focus:outline-none cursor-pointer">
+                    <option value="d_kurd" class="bg-slate-900 text-white">D Kurd (9 Notes - استاندارد)</option>
+                    <option value="celtic_minor" class="bg-slate-900 text-white">Celtic Minor / Amara (9 Notes)</option>
+                    <option value="hijaz" class="bg-slate-900 text-white">D Hijaz (9 Notes - شرقی)</option>
+                </select>
+            </div>
+
+            <!-- Record Audio Button -->
+            <button id="record-btn" class="glass-btn px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-2 text-rose-200 border-rose-500/40 hover:bg-rose-500/20">
+                <span id="record-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <span id="record-label">ضبط اجرا</span>
+                <span id="record-timer" class="mono-font text-[11px] text-rose-300 hidden">00:00</span>
+            </button>
+
+            <!-- Download Recorded Link (Appears after recording) -->
+            <a id="download-audio-btn" class="hidden glass-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-300 border-emerald-500/40 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>دانلود فایل</span>
+            </a>
+
+            <!-- Toggle Calibration & Synth Settings -->
+            <button id="toggle-settings-btn" class="glass-btn px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-amber-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                <span>کالیبراسیون و صدا</span>
+            </button>
+
+            <!-- Toggle Custom Samples Modal -->
+            <button id="toggle-samples-btn" class="glass-btn px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 text-cyan-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+                <span>سمپل شخصی (WAV/MP3)</span>
+            </button>
+
+            <!-- Toggle Telemetry HUD -->
+            <button id="toggle-hud-btn" class="glass-btn px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-200" title="نمایش/مخفی‌سازی پنل تله‌متری">
+                HUD
+            </button>
+        </div>
+    </header>
+
+    <!-- Left-side Real-Time Telemetry & Kinematics HUD -->
+    <aside id="telemetry-hud" class="absolute bottom-3 left-3 z-20 w-80 md:w-96 glass-panel rounded-2xl p-3.5 pointer-events-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-2 mb-2.5">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                <h2 class="text-xs font-bold tracking-wider text-cyan-300 uppercase">تله‌متری سینماتیک سه‌بعدی و ضربه</h2>
+            </div>
+            <span id="active-hands-badge" class="mono-font text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">Hands: 0</span>
+        </div>
+
+        <!-- Live Strike Monitor -->
+        <div class="grid grid-cols-2 gap-2 mb-2.5">
+            <div class="bg-slate-900/75 rounded-xl p-2 border border-slate-800">
+                <div class="text-[10px] text-slate-400">نت و فرکانس فعال</div>
+                <div class="flex items-baseline justify-between mt-0.5">
+                    <span id="hud-note" class="mono-font text-base font-bold text-amber-300">--</span>
+                    <span id="hud-freq" class="mono-font text-xs text-slate-400">0.0 Hz</span>
+                </div>
+            </div>
+            <div class="bg-slate-900/75 rounded-xl p-2 border border-slate-800">
+                <div class="text-[10px] text-slate-400">تکنیک تشخیص داده‌شده</div>
+                <div id="hud-technique" class="text-xs font-bold text-cyan-300 mt-1 truncate">آماده نواختن...</div>
+            </div>
+        </div>
+
+        <!-- Kinematics Metrics Bars -->
+        <div class="space-y-2 text-xs">
+            <!-- Instant Hand Velocity -->
+            <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="text-slate-300">سرعت لحظه‌ای دست (Velocity 3D):</span>
+                    <span id="hud-velocity" class="mono-font text-cyan-300 font-semibold">0.00 m/s</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="hud-velocity-bar" class="h-full bg-gradient-to-r from-cyan-500 to-amber-400 w-0 transition-all duration-75"></div>
+                </div>
+            </div>
+
+            <!-- Deceleration / Whip Impulse -->
+            <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="text-slate-300">شتاب ضربه شلاقی (Deceleration):</span>
+                    <span id="hud-accel" class="mono-font text-amber-300 font-semibold">0.0 m/s²</span>
+                </div>
+                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="hud-accel-bar" class="h-full bg-amber-400 w-0 transition-all duration-75"></div>
+                </div>
+            </div>
+
+            <!-- Palm Orientation (Pitch & Roll) & Eccentricity -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <div class="bg-slate-900/60 px-2.5 py-1.5 rounded-lg border border-slate-800/80 flex justify-between items-center">
+                    <span class="text-[10px] text-slate-400">زاویه کف دست:</span>
+                    <span id="hud-palm-angle" class="mono-font text-[11px] text-emerald-300 font-semibold">0° / 0°</span>
+                </div>
+                <div class="bg-slate-900/60 px-2.5 py-1.5 rounded-lg border border-slate-800/80 flex justify-between items-center">
+                    <span class="text-[10px] text-slate-400">مرکزیت (r/R):</span>
+                    <span id="hud-eccentricity" class="mono-font text-[11px] text-purple-300 font-semibold">0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Playing Guide Footer -->
+        <div class="mt-2.5 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>💡 می‌توانید با ماوس یا لمس مستقیم هم بنوازید یا ساز را جابجا کنید.</span>
+        </div>
+    </aside>
+
+    <!-- Right-side Calibration & Audio Engine Settings Panel -->
+    <aside id="settings-panel" class="absolute top-16 right-3 z-20 w-80 md:w-96 max-h-[calc(100vh-5rem)] overflow-y-auto glass-panel rounded-2xl p-4 pointer-events-auto transition-all duration-300">
+        <div class="flex items-center justify-between border-b border-slate-700/60 pb-2.5 mb-3">
+            <h3 class="text-sm font-bold text-amber-300 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>کالیبراسیون ساز و موتور فیزیکی</span>
+            </h3>
+            <button id="close-settings-btn" class="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded bg-slate-800/70">بستن</button>
+        </div>
+
+        <!-- Section 1: 3D Geometry & Perspective Calibration -->
+        <div class="space-y-3 mb-4">
+            <div class="text-xs font-semibold text-amber-200/80 uppercase tracking-wider">۱. هندسه و پرسپکتیو سه‌بعدی ساز</div>
+            
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">اندازه قطر هنگ‌درام (Scale):</span>
+                    <span id="val-radius" class="mono-font text-amber-300">100%</span>
+                </div>
+                <input type="range" id="slider-radius" min="55" max="145" value="100">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">زاویه پرسپکتیو (Tilt Angle):</span>
+                    <span id="val-tilt" class="mono-font text-amber-300">22°</span>
+                </div>
+                <input type="range" id="slider-tilt" min="0" max="55" value="22">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">شفافیت بدنه فلزی (AR Opacity):</span>
+                    <span id="val-opacity" class="mono-font text-amber-300">86%</span>
+                </div>
+                <input type="range" id="slider-opacity" min="30" max="100" value="86">
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+                <span class="text-xs text-slate-300">قفل موقعیت ساز روی صفحه:</span>
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="lock-position-toggle" class="sr-only peer">
+                    <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all relative peer-checked:bg-amber-500"></div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Section 2: Kinematics & Anti-Hover Sensitivity -->
+        <div class="space-y-3 mb-4 pt-3 border-t border-slate-700/60">
+            <div class="text-xs font-semibold text-cyan-300/90 uppercase tracking-wider">۲. حساسیت ضربه و فیلتر سینماتیک</div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">آستانه سرعت ضربه (Strike Gate):</span>
+                    <span id="val-threshold" class="mono-font text-cyan-300">0.68 m/s</span>
+                </div>
+                <input type="range" id="slider-threshold" min="25" max="160" value="68">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">نرم‌کننده تطبیقی دست (EMA Alpha):</span>
+                    <span id="val-ema" class="mono-font text-cyan-300">0.42</span>
+                </div>
+                <input type="range" id="slider-ema" min="15" max="90" value="42">
+            </div>
+        </div>
+
+        <!-- Section 3: Modal Web Audio Synthesis Parameters -->
+        <div class="space-y-3 pt-3 border-t border-slate-700/60">
+            <div class="text-xs font-semibold text-emerald-300/90 uppercase tracking-wider">۳. موتور سنتز فیزیکی (1:2:3 Harmonics)</div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">کشش طنین فلز (Sustain Decay):</span>
+                    <span id="val-decay" class="mono-font text-emerald-300">4.2 s</span>
+                </div>
+                <input type="range" id="slider-decay" min="15" max="85" value="42">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">رزونانس کاسه و ریورب (Gu & Reverb):</span>
+                    <span id="val-reverb" class="mono-font text-emerald-300">55%</span>
+                </div>
+                <input type="range" id="slider-reverb" min="0" max="100" value="55">
+            </div>
+
+            <div>
+                <div class="flex justify-between text-xs mb-1">
+                    <span class="text-slate-300">ترکیب سمپل واقعی با سنتز فیزیکی:</span>
+                    <span id="val-sample-mix" class="mono-font text-emerald-300">70%</span>
+                </div>
+                <input type="range" id="slider-sample-mix" min="0" max="100" value="70">
+            </div>
+
+            <div class="pt-2 flex gap-2">
+                <button id="test-chord-btn" class="w-full glass-btn py-2 rounded-xl text-xs font-semibold text-amber-200 flex items-center justify-center gap-1.5">
+                    <span>🎵 تست آکورد هارمونیک گام فعلی</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Custom WAV/MP3 Sample Loader Modal -->
+    <div id="samples-modal" class="hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel rounded-3xl max-w-lg w-full p-5 border border-cyan-500/30 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-3 mb-3">
+                <div>
+                    <h3 class="text-base font-bold text-cyan-300">بارگذاری سمپل‌های واقعی (Custom WAV/MP3 Loader)</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">فایل صوتی هر نت را انتخاب کنید تا با موتور سنتز فیزیکی ترکیب یا جایگزین شود.</p>
+                </div>
+                <button id="close-samples-modal" class="glass-btn px-3 py-1 rounded-xl text-xs text-slate-300">بستن</button>
+            </div>
+
+            <div id="sample-slots-container" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                <!-- Populated dynamically based on current scale notes -->
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <span>وضعیت: سمپل‌های بارگذاری‌شده با سرعت ضربه و Pitch داینامیک پخش می‌شوند.</span>
+                <button id="clear-samples-btn" class="text-rose-400 hover:underline">حذف همه سمپل‌ها</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome / Audio & Camera Initialization Modal -->
+    <div id="init-overlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
+        <div class="glass-panel max-w-xl w-full rounded-3xl p-6 md:p-8 text-center border border-amber-400/30 shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-400/30 to-amber-700/30 border border-amber-400/50 flex items-center justify-center shadow-lg shadow-amber-500/10">
+                <svg class="w-9 h-9 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" stroke-width="1.8"/>
+                    <circle cx="12" cy="12" r="3" stroke-width="1.8"/>
+                    <path stroke-linecap="round" stroke-width="1.8" d="M12 3v2m0 14v2m9-9h-2M5 12H3"/>
+                </svg>
+            </div>
+            <h2 class="text-xl md:text-2xl font-extrabold text-amber-200 mb-2">استودیو واقعیت افزوده هنگ‌درام</h2>
+            <p class="text-xs md:text-sm text-slate-300 leading-relaxed mb-5">
+                شبیه‌ساز فوق‌سریع نواختن هنگ‌درام با ردیابی سه‌بعدی دو دست، تشخیص زاویه کف دست (<span class="text-cyan-300">Fingertip, Thumb, Palm Slap, Hand Mute</span>) و سنتز فیزیکی هارمونیک <span class="mono-font text-amber-300">1:2:3</span>.
+            </p>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-right mb-6">
+                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                    <div class="text-amber-300 font-bold text-xs mb-0.5">۱. ضربه نوک انگشت</div>
+                    <div class="text-[11px] text-slate-400">زاویه شیب‌دار؛ صدای زنگ‌دار و شفاف با کشش کامل</div>
+                </div>
+                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                    <div class="text-amber-300 font-bold text-xs mb-0.5">۲. ضربه شست</div>
+                    <div class="text-[11px] text-slate-400">صدای گرم و بم‌تر با تقویت فرکانس پایه ($f_0$)</div>
+                </div>
+                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                    <div class="text-cyan-300 font-bold text-xs mb-0.5">۳. سیلی کف دست (Tak)</div>
+                    <div class="text-[11px] text-slate-400">فرود سریع کف دست صاف؛ صدای کوبشی و فلزی</div>
+                </div>
+                <div class="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                    <div class="text-emerald-300 font-bold text-xs mb-0.5">۴. خفه کردن (Mute)</div>
+                    <div class="text-[11px] text-slate-400">نگه‌داشتن کف دست صاف روی نت در حال طنین</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button id="start-ar-btn" class="px-6 py-3 rounded-2xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span>شروع با وب‌کم و فعال‌سازی صدا (AR Mode)</span>
+                </button>
+                <button id="start-touch-btn" class="glass-btn px-5 py-3 rounded-2xl font-semibold text-xs text-slate-200 hover:text-white">
+                    ورود بدون وب‌کم (حالت لمسی / ماوس)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * 1. SCALES & HANDPAN GEOMETRY CONFIGURATION
+         * Authentic zig-zag alternating layout (Bottom to Top around central Ding)
+         * Angles in degrees where 90° is bottom (6 o'clock), -90° is top (12 o'clock)
+         * ============================================================================
+         */
+        const HANDPAN_SCALES = {
+            d_kurd: {
+                name: 'D Kurd (9 Notes)',
+                ding: { id: 'ding', label: 'D3', sub: 'Ding', freq: 146.83 },
+                // Zig-zag from bottom (1:A3 bottom-right, 2:Bb3 bottom-left, ..., 8:A4 top)
+                notes: [
+                    { id: 'n1', label: 'A3',  freq: 220.00, angleDeg: 68  }, // Bottom-Right
+                    { id: 'n2', label: 'Bb3', freq: 233.08, angleDeg: 112 }, // Bottom-Left
+                    { id: 'n3', label: 'C4',  freq: 261.63, angleDeg: 22  }, // Mid-Low Right
+                    { id: 'n4', label: 'D4',  freq: 293.66, angleDeg: 158 }, // Mid-Low Left
+                    { id: 'n5', label: 'E4',  freq: 329.63, angleDeg: -22 }, // Mid-High Right
+                    { id: 'n6', label: 'F4',  freq: 349.23, angleDeg: -158}, // Mid-High Left
+                    { id: 'n7', label: 'G4',  freq: 392.00, angleDeg: -65 }, // Top-Right
+                    { id: 'n8', label: 'A4',  freq: 440.00, angleDeg: -115}  // Top-Left
+                ]
+            },
+            celtic_minor: {
+                name: 'Celtic Minor / Amara',
+                ding: { id: 'ding', label: 'D3', sub: 'Ding', freq: 146.83 },
+                notes: [
+                    { id: 'n1', label: 'A3',  freq: 220.00, angleDeg: 68  },
+                    { id: 'n2', label: 'C4',  freq: 261.63, angleDeg: 112 },
+                    { id: 'n3', label: 'D4',  freq: 293.66, angleDeg: 22  },
+                    { id: 'n4', label: 'E4',  freq: 329.63, angleDeg: 158 },
+                    { id: 'n5', label: 'F4',  freq: 349.23, angleDeg: -22 },
+                    { id: 'n6', label: 'G4',  freq: 392.00, angleDeg: -158},
+                    { id: 'n7', label: 'A4',  freq: 440.00, angleDeg: -65 },
+                    { id: 'n8', label: 'C5',  freq: 523.25, angleDeg: -115}
+                ]
+            },
+            hijaz: {
+                name: 'D Hijaz (Phrygian Dominant)',
+                ding: { id: 'ding', label: 'D3', sub: 'Ding', freq: 146.83 },
+                notes: [
+                    { id: 'n1', label: 'A3',  freq: 220.00, angleDeg: 68  },
+                    { id: 'n2', label: 'Bb3', freq: 233.08, angleDeg: 112 },
+                    { id: 'n3', label: 'C#4', freq: 277.18, angleDeg: 22  },
+                    { id: 'n4', label: 'D4',  freq: 293.66, angleDeg: 158 },
+                    { id: 'n5', label: 'E4',  freq: 329.63, angleDeg: -22 },
+                    { id: 'n6', label: 'F4',  freq: 349.23, angleDeg: -158},
+                    { id: 'n7', label: 'G4',  freq: 392.00, angleDeg: -65 },
+                    { id: 'n8', label: 'A4',  freq: 440.00, angleDeg: -115}
+                ]
+            }
+        };
+
+        const APP_STATE = {
+            currentScaleKey: 'd_kurd',
+            // Calibration & Geometry
+            panCenterX: 0.5,        // Normalized [0..1] screen X
+            panCenterY: 0.56,       // Normalized [0..1] screen Y
+            radiusScale: 1.0,       // Multiplier
+            tiltAngleDeg: 22,       // Perspective tilt (0 to 55 deg)
+            opacity: 0.86,          // Body opacity
+            lockPosition: false,
+            isDraggingPan: false,
+            dragOffsetX: 0,
+            dragOffsetY: 0,
+
+            // Kinematics & Filter Configuration
+            strikeVelocityThreshold: 0.68, // m/s equivalent in normalized units/sec
+            baseEmaAlpha: 0.42,            // Base smoothing factor
+            sustainDecaySec: 4.2,          // Modal decay duration
+            reverbMix: 0.55,               // Cavity + Convolver reverb mix
+            sampleMix: 0.70,               // Custom Sample vs Synth mix
+
+            // Runtime Visual Effects
+            ripples: [],
+            noteGlows: {},
+            computedTonefields: [],        // Populated per frame/resize
+
+            // Telemetry Display
+            lastTelemetry: {
+                note: '--',
+                freq: 0,
+                technique: 'آماده نواختن...',
+                velocity: 0,
+                accel: 0,
+                pitchDeg: 0,
+                rollDeg: 0,
+                eccentricity: 0
+            }
+        };
+
+        /**
+         * ============================================================================
+         * 2. MODAL WEB AUDIO SYNTHESIS ENGINE + CUSTOM SAMPLE LOADER + RECORDER
+         * Generates authentic nitrided steel handpan acoustics in real-time:
+         * - 1 : 2 : 3 harmonic tuning (f0, 2*f0, 3*f0) + metallic shimmer detune pair
+         * - Eccentricity (r/R) harmonic shaping
+         * - Velocity-controlled Attack, Low-pass filter & microtonal Pitch Drop
+         * - Bandpass filtered strike transient noise + 92Hz Gu Helmholtz resonator
+         * - Active Voice Management for Hand Mute / Damping
+         * ============================================================================
+         */
+        class HandpanAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.compressor = null;
+                this.dryGain = null;
+                this.reverbGain = null;
+                this.convolver = null;
+                this.noiseBuffer = null;
+                this.mediaStreamDest = null;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.isRecording = false;
+                this.recordStartTime = 0;
+
+                // Active voices mapped by note ID for Hand Mute / Damping
+                this.activeVoices = new Map();
+                // User uploaded custom AudioBuffers mapped by note ID
+                this.customSamples = new Map();
+            }
+
+            async init() {
+                if (this.ctx) {
+                    if (this.ctx.state === 'suspended') await this.ctx.resume();
+                    return;
+                }
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx({ latencyHint: 'interactive' });
+
+                // Master Dynamics Compressor for warm saturation and clipping prevention
+                this.compressor = this.ctx.createDynamicsCompressor();
+                this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
+                this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
+                this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
+                this.compressor.attack.setValueAtTime(0.002, this.ctx.currentTime);
+                this.compressor.release.setValueAtTime(0.22, this.ctx.currentTime);
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.setValueAtTime(0.9, this.ctx.currentTime);
+
+                this.dryGain = this.ctx.createGain();
+                this.reverbGain = this.ctx.createGain();
+                this.updateReverbMix(APP_STATE.reverbMix);
+
+                // Synthesize lush metallic chamber impulse response for ConvolverNode
+                this.convolver = this.ctx.createConvolver();
+                this.convolver.buffer = this.createChamberImpulseResponse(2.8, 2.4);
+
+                // Pre-generate white/pink noise buffer for strike contact transient
+                this.noiseBuffer = this.createNoiseBuffer(0.4);
+
+                // Routing: Voices -> dryGain & convolver -> compressor -> masterGain -> Destination + Recorder
+                this.dryGain.connect(this.compressor);
+                this.convolver.connect(this.reverbGain);
+                this.reverbGain.connect(this.compressor);
+                this.compressor.connect(this.masterGain);
+                this.masterGain.connect(this.ctx.destination);
+
+                // MediaStreamDestination for Recording user performance
+                this.mediaStreamDest = this.ctx.createMediaStreamDestination();
+                this.masterGain.connect(this.mediaStreamDest);
+            }
+
+            updateReverbMix(mix) {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                this.dryGain.gain.setTargetAtTime(1.0 - mix * 0.35, now, 0.02);
+                this.reverbGain.gain.setTargetAtTime(mix * 0.85, now, 0.02);
+            }
+
+            createNoiseBuffer(durationSec) {
+                const sampleRate = this.ctx.sampleRate;
+                const length = Math.floor(sampleRate * durationSec);
+                const buffer = this.ctx.createBuffer(1, length, sampleRate);
+                const data = buffer.getChannelData(0);
+                let b0 = 0, b1 = 0, b2 = 0;
+                for (let i = 0; i < length; i++) {
+                    const white = Math.random() * 2 - 1;
+                    // Soft pink-ish filtering
+                    b0 = 0.997 * b0 + white * 0.029;
+                    b1 = 0.985 * b1 + white * 0.032;
+                    b2 = 0.950 * b2 + white * 0.048;
+                    data[i] = (b0 + b1 + b2 + white * 0.18) * 0.7;
+                }
+                return buffer;
+            }
+
+            createChamberImpulseResponse(duration, decay) {
+                const rate = this.ctx.sampleRate;
+                const length = Math.floor(rate * duration);
+                const impulse = this.ctx.createBuffer(2, length, rate);
+                for (let ch = 0; ch < 2; ch++) {
+                    const channelData = impulse.getChannelData(ch);
+                    for (let i = 0; i < length; i++) {
+                        const t = i / rate;
+                        const env = Math.pow(1 - i / length, decay);
+                        // Subtle early modal reflections
+                        const early = (i < rate * 0.06) ? Math.sin(2 * Math.PI * 195 * t) * 0.15 : 0;
+                        channelData[i] = ((Math.random() * 2 - 1) * 0.85 + early) * env;
+                    }
+                }
+                return impulse;
+            }
+
+            /**
+             * Triggers a physical modal synthesis voice (plus optional custom sample)
+             * @param {Object} noteObj - { id, label, freq }
+             * @param {Object} params - { velocityNorm, eccentricity, technique, palmPitchDeg }
+             */
+            triggerNote(noteObj, params) {
+                if (!this.ctx) return;
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+
+                const now = this.ctx.currentTime;
+                const f0 = noteObj.freq || 220;
+                const vel = Math.min(1.0, Math.max(0.08, params.velocityNorm || 0.5));
+                const ecc = Math.min(1.0, Math.max(0.0, params.eccentricity || 0.25));
+                const technique = params.technique || 'FINGERTIP'; // 'FINGERTIP' | 'THUMB' | 'SLAP'
+
+                // Master bus for this note voice (allows rapid damping / muting)
+                const voiceBus = this.ctx.createGain();
+                voiceBus.gain.setValueAtTime(1.0, now);
+                voiceBus.connect(this.dryGain);
+                voiceBus.connect(this.convolver);
+
+                // Velocity-controlled dynamic Low-Pass Filter
+                const voiceFilter = this.ctx.createBiquadFilter();
+                voiceFilter.type = 'lowpass';
+                const baseCutoff = technique === 'THUMB' ? f0 * 5.2 : (technique === 'SLAP' ? f0 * 14 : f0 * 9.5);
+                const dynamicCutoff = Math.min(16500, baseCutoff * (0.55 + vel * 1.15 + ecc * 0.45));
+                voiceFilter.frequency.setValueAtTime(dynamicCutoff, now);
+                voiceFilter.frequency.exponentialRampToValueAtTime(Math.max(f0 * 1.6, 260), now + APP_STATE.sustainDecaySec);
+                voiceFilter.connect(voiceBus);
+
+                // Attack time: 2ms on hard fast strikes up to 20ms on soft gentle strikes
+                const attackTime = 0.020 - vel * 0.018;
+                const baseDecay = technique === 'SLAP' ? 0.32 : APP_STATE.sustainDecaySec;
+
+                // Microtonal initial pitch bend on strong hits (nonlinear steel tension)
+                const pitchBendHz = vel > 0.45 ? f0 * 0.0085 * vel : 0;
+
+                // Eccentricity (r/R) & Technique Harmonic Gains:
+                // Center strike (low ecc) -> Boost fundamental f0
+                // Edge strike (high ecc) -> Boost 2*f0 (octave) and 3*f0 (compound fifth)
+                let g1 = (1.0 - ecc * 0.48) * (technique === 'THUMB' ? 1.25 : 1.0);
+                let g2 = (0.38 + ecc * 0.55) * (technique === 'THUMB' ? 0.72 : 1.0);
+                let g3 = (0.16 + ecc * 0.65) * (technique === 'SLAP' ? 1.45 : (technique === 'THUMB' ? 0.4 : 1.0));
+
+                if (technique === 'SLAP') {
+                    g1 *= 0.35;
+                    g2 *= 0.75;
+                }
+
+                // Custom Sample Playback (if loaded for this note)
+                const hasCustomSample = this.customSamples.has(noteObj.id);
+                const synthScale = hasCustomSample ? (1.0 - APP_STATE.sampleMix * 0.8) : 1.0;
+
+                if (hasCustomSample && APP_STATE.sampleMix > 0.02) {
+                    const sampleBuf = this.customSamples.get(noteObj.id);
+                    const src = this.ctx.createBufferSource();
+                    src.buffer = sampleBuf;
+                    const smpGain = this.ctx.createGain();
+                    smpGain.gain.setValueAtTime(0.0001, now);
+                    smpGain.gain.linearRampToValueAtTime(vel * APP_STATE.sampleMix, now + attackTime);
+                    smpGain.gain.exponentialRampToValueAtTime(0.0001, now + baseDecay * 1.2);
+                    src.connect(smpGain);
+                    smpGain.connect(voiceFilter);
+                    src.start(now);
+                }
+
+                // 1:2:3 Harmonic Modal Oscillators + Detuned Shimmer Pair
+                const modes = [
+                    { ratio: 1.0,      detuneCents: 0,    gain: g1 * 0.52, decayMult: 1.00, type: 'sine' },
+                    { ratio: 2.0,      detuneCents: -1.8, gain: g2 * 0.30, decayMult: 0.78, type: 'sine' },
+                    { ratio: 2.0,      detuneCents: +2.1, gain: g2 * 0.24, decayMult: 0.74, type: 'sine' },
+                    { ratio: 3.0,      detuneCents: -3.5, gain: g3 * 0.18, decayMult: 0.52, type: 'triangle' },
+                    { ratio: 3.0,      detuneCents: +4.2, gain: g3 * 0.14, decayMult: 0.46, type: 'sine' }
+                ];
+
+                const stopTime = now + baseDecay + 0.15;
+
+                modes.forEach(m => {
+                    const osc = this.ctx.createOscillator();
+                    const modeGain = this.ctx.createGain();
+                    osc.type = m.type;
+
+                    const targetFreq = f0 * m.ratio;
+                    osc.frequency.setValueAtTime(targetFreq + pitchBendHz * m.ratio, now);
+                    if (pitchBendHz > 0) {
+                        osc.frequency.exponentialRampToValueAtTime(targetFreq, now + 0.048);
+                    }
+                    osc.detune.setValueAtTime(m.detuneCents, now);
+
+                    const peakGain = Math.max(0.001, m.gain * vel * synthScale);
+                    const modeDecay = Math.max(0.08, baseDecay * m.decayMult);
+
+                    modeGain.gain.setValueAtTime(0.0001, now);
+                    modeGain.gain.linearRampToValueAtTime(peakGain, now + attackTime);
+                    modeGain.gain.exponentialRampToValueAtTime(0.0001, now + modeDecay);
+
+                    osc.connect(modeGain);
+                    modeGain.connect(voiceFilter);
+                    osc.start(now);
+                    osc.stop(now + modeDecay + 0.05);
+                });
+
+                // 2. Strike Contact Transient (Bandpass Filtered Noise 10-25ms)
+                this.triggerStrikeTransient(voiceBus, now, vel, ecc, technique, params.palmPitchDeg || 25);
+
+                // 3. Gu / Helmholtz Cavity Resonance (Around 92 Hz)
+                this.triggerCavityResonance(voiceBus, now, vel, technique);
+
+                // Register active voice for Hand Mute / Damping
+                const voiceRecord = {
+                    noteId: noteObj.id,
+                    voiceBus,
+                    createdAt: performance.now(),
+                    expiresAt: performance.now() + baseDecay * 1000,
+                    isMuted: false
+                };
+                this.activeVoices.set(noteObj.id, voiceRecord);
+            }
+
+            triggerStrikeTransient(destination, now, vel, ecc, technique, palmPitchDeg) {
+                if (!this.noiseBuffer) return;
+                const noiseSrc = this.ctx.createBufferSource();
+                noiseSrc.buffer = this.noiseBuffer;
+
+                const bpFilter = this.ctx.createBiquadFilter();
+                bpFilter.type = 'bandpass';
+                // Angle & technique affect transient brightness
+                const centerFreq = technique === 'SLAP'
+                    ? 2400 + vel * 1800
+                    : (technique === 'THUMB' ? 680 + vel * 500 : 1250 + ecc * 1100 + Math.abs(palmPitchDeg) * 12);
+                bpFilter.frequency.setValueAtTime(Math.min(8000, centerFreq), now);
+                bpFilter.Q.setValueAtTime(technique === 'SLAP' ? 1.8 : 3.2, now);
+
+                const transGain = this.ctx.createGain();
+                const transientDuration = technique === 'SLAP' ? 0.024 : 0.015;
+                const transientPeak = (technique === 'SLAP' ? 0.85 : 0.28) * vel;
+
+                transGain.gain.setValueAtTime(0.001, now);
+                transGain.gain.linearRampToValueAtTime(transientPeak, now + 0.002);
+                transGain.gain.exponentialRampToValueAtTime(0.0001, now + transientDuration);
+
+                noiseSrc.connect(bpFilter);
+                bpFilter.connect(transGain);
+                transGain.connect(destination);
+
+                noiseSrc.start(now);
+                noiseSrc.stop(now + transientDuration + 0.01);
+            }
+
+            triggerCavityResonance(destination, now, vel, technique) {
+                const guOsc = this.ctx.createOscillator();
+                const guGain = this.ctx.createGain();
+                guOsc.type = 'sine';
+                // Helmholtz air resonance around 92Hz -> 88Hz
+                guOsc.frequency.setValueAtTime(96, now);
+                guOsc.frequency.exponentialRampToValueAtTime(88, now + 0.18);
+
+                const guPeak = (technique === 'THUMB' ? 0.26 : (technique === 'SLAP' ? 0.34 : 0.18)) * vel;
+                guGain.gain.setValueAtTime(0.001, now);
+                guGain.gain.linearRampToValueAtTime(guPeak, now + 0.008);
+                guGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+
+                guOsc.connect(guGain);
+                guGain.connect(destination);
+                guOsc.start(now);
+                guOsc.stop(now + 0.35);
+            }
+
+            /**
+             * Hand Mute / Damping: Smoothly fades out a ringing note when flat palm rests on it
+             */
+            dampNote(noteId) {
+                if (!this.ctx) return false;
+                const voice = this.activeVoices.get(noteId);
+                if (!voice || voice.isMuted) return false;
+
+                const nowMs = performance.now();
+                if (nowMs > voice.expiresAt || (nowMs - voice.createdAt) < 90) return false;
+
+                voice.isMuted = true;
+                const now = this.ctx.currentTime;
+                voice.voiceBus.gain.cancelScheduledValues(now);
+                voice.voiceBus.gain.setValueAtTime(Math.max(0.001, voice.voiceBus.gain.value), now);
+                // Smooth 65ms acoustic hand damping fade-out
+                voice.voiceBus.gain.exponentialRampToValueAtTime(0.0001, now + 0.065);
+                return true;
+            }
+
+            async loadCustomSample(noteId, file) {
+                await this.init();
+                const arrayBuf = await file.arrayBuffer();
+                const audioBuf = await this.ctx.decodeAudioData(arrayBuf);
+                this.customSamples.set(noteId, audioBuf);
+            }
+
+            toggleRecording(onStopCallback) {
+                if (!this.ctx || !this.mediaStreamDest) return false;
+                if (!this.isRecording) {
+                    this.recordedChunks = [];
+                    let options = { mimeType: 'audio/webm' };
+                    if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                        options = {};
+                    }
+                    this.mediaRecorder = new MediaRecorder(this.mediaStreamDest.stream, options);
+                    this.mediaRecorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) this.recordedChunks.push(e.data);
+                    };
+                    this.mediaRecorder.onstop = () => {
+                        const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
+                        const url = URL.createObjectURL(blob);
+                        if (onStopCallback) onStopCallback(url);
+                    };
+                    this.mediaRecorder.start();
+                    this.isRecording = true;
+                    this.recordStartTime = performance.now();
+                    return true;
+                } else {
+                    this.mediaRecorder.stop();
+                    this.isRecording = false;
+                    return false;
+                }
+            }
+        }
+
+        const audioEngine = new HandpanAudioEngine();
+
+        /**
+         * ============================================================================
+         * 3. 3D HAND KINEMATICS, ADAPTIVE EMA SMOOTHING & PALM NORMAL ORIENTATION
+         * - Tracks all 21 landmarks for both hands in 3D space
+         * - Adaptive EMA smoothing: eliminates jitter at low speeds, instant response at high speed
+         * - Computes 3D Velocity (vx, vy, vz) and Whip Deceleration for landmarks 4, 8, 12, 16
+         * - Computes Palm Surface Normal via 3D Cross Product of Wrist->IndexMCP (0->5)
+         *   and Wrist->PinkyMCP (0->17) to extract Pitch & Roll angles
+         * - Implements Anti-Hover Strike Gating with 45ms Cooldown & Spatial/Velocity Re-arm
+         * ============================================================================
+         */
+        const STRIKE_LANDMARKS = [
+            { idx: 8,  name: 'Index Tip',  isThumb: false },
+            { idx: 12, name: 'Middle Tip', isThumb: false },
+            { idx: 16, name: 'Ring Tip',   isThumb: false },
+            { idx: 4,  name: 'Thumb Side', isThumb: true  }
+        ];
+
+        class HandKinematicsTracker {
+            constructor() {
+                // Separate state per hand index (0 and 1)
+                this.handsState = [this.createEmptyHandState(), this.createEmptyHandState()];
+            }
+
+            createEmptyHandState() {
+                const fingerStates = {};
+                STRIKE_LANDMARKS.forEach(lm => {
+                    fingerStates[lm.idx] = {
+                        prevX: 0, prevY: 0, prevZ: 0,
+                        vx: 0, vy: 0, vz: 0,
+                        speed: 0,
+                        prevForwardSpeed: 0,
+                        peakForwardSpeed: 0,
+                        deceleration: 0,
+                        armed: true,
+                        lastStrikeTime: 0
+                    };
+                });
+                return {
+                    initialized: false,
+                    lastTimestamp: 0,
+                    smoothedLandmarks: new Array(21).fill(null).map(() => ({ x: 0, y: 0, z: 0 })),
+                    palmNormal: { x: 0, y: 0, z: -1 },
+                    palmPitchDeg: 0,
+                    palmRollDeg: 0,
+                    palmFlatness: 0, // [0..1] 1 = completely parallel to camera/instrument
+                    palmCenter: { x: 0, y: 0, z: 0 },
+                    palmSpeed: 0,
+                    prevPalmY: 0,
+                    prevPalmZ: 0,
+                    slapCooldown: 0,
+                    fingers: fingerStates
+                };
+            }
+
+            /**
+             * Updates 3D kinematics for a single detected hand
+             * @param {number} handSlot - 0 or 1
+             * @param {Array} rawLandmarks - MediaPipe 21 landmarks (x, y, z)
+             * @param {string} handednessLabel - 'Left' or 'Right'
+             * @param {number} nowMs - performance.now()
+             */
+            updateHand(handSlot, rawLandmarks, handednessLabel, nowMs) {
+                const state = this.handsState[handSlot];
+                const dt = state.initialized
+                    ? Math.min(0.1, Math.max(0.004, (nowMs - state.lastTimestamp) / 1000))
+                    : 0.016;
+                state.lastTimestamp = nowMs;
+
+                const baseAlpha = APP_STATE.baseEmaAlpha;
+
+                // 1. Adaptive EMA Smoothing on all 21 3D landmarks (Mirrored X for AR display)
+                for (let i = 0; i < 21; i++) {
+                    const rx = 1.0 - rawLandmarks[i].x; // Mirrored X
+                    const ry = rawLandmarks[i].y;
+                    const rz = rawLandmarks[i].z;
+
+                    if (!state.initialized) {
+                        state.smoothedLandmarks[i].x = rx;
+                        state.smoothedLandmarks[i].y = ry;
+                        state.smoothedLandmarks[i].z = rz;
+                    } else {
+                        const prev = state.smoothedLandmarks[i];
+                        const deltaDist = Math.hypot(rx - prev.x, ry - prev.y, rz - prev.z);
+                        const instSpeed = deltaDist / dt;
+                        // Adaptive alpha: low alpha for micro-jitter, ramps up to ~0.94 on fast motion
+                        const adaptiveAlpha = Math.min(0.95, baseAlpha + Math.min(1.0, instSpeed * 0.45) * (0.95 - baseAlpha));
+
+                        prev.x = prev.x + adaptiveAlpha * (rx - prev.x);
+                        prev.y = prev.y + adaptiveAlpha * (ry - prev.y);
+                        prev.z = prev.z + adaptiveAlpha * (rz - prev.z);
+                    }
+                }
+                state.initialized = true;
+
+                const lm = state.smoothedLandmarks;
+
+                // 2. Compute Palm Surface Normal via Cross Product of V1 (0 -> 5) and V2 (0 -> 17)
+                const v1 = {
+                    x: lm[5].x - lm[0].x,
+                    y: lm[5].y - lm[0].y,
+                    z: lm[5].z - lm[0].z
+                };
+                const v2 = {
+                    x: lm[17].x - lm[0].x,
+                    y: lm[17].y - lm[0].y,
+                    z: lm[17].z - lm[0].z
+                };
+
+                // Cross Product N = V1 x V2 (flip sign based on handedness so normal points out of palm)
+                const handSign = handednessLabel === 'Left' ? -1 : 1;
+                let nx = (v1.y * v2.z - v1.z * v2.y) * handSign;
+                let ny = (v1.z * v2.x - v1.x * v2.z) * handSign;
+                let nz = (v1.x * v2.y - v1.y * v2.x) * handSign;
+                const nMag = Math.hypot(nx, ny, nz) || 1e-6;
+                nx /= nMag;
+                ny /= nMag;
+                nz /= nMag;
+
+                state.palmNormal = { x: nx, y: ny, z: nz };
+                // Pitch & Roll in degrees
+                state.palmPitchDeg = Math.atan2(ny, Math.abs(nz)) * (180 / Math.PI);
+                state.palmRollDeg  = Math.atan2(nx, Math.abs(nz)) * (180 / Math.PI);
+                // Flatness: how parallel the palm plane is to the instrument surface
+                state.palmFlatness = Math.abs(nz);
+
+                // Palm Center (average of Wrist 0, Index MCP 5, Middle MCP 9, Pinky MCP 17)
+                const pcX = (lm[0].x + lm[5].x + lm[9].x + lm[17].x) * 0.25;
+                const pcY = (lm[0].y + lm[5].y + lm[9].y + lm[17].y) * 0.25;
+                const pcZ = (lm[0].z + lm[5].z + lm[9].z + lm[17].z) * 0.25;
+
+                const palmVy = (pcY - state.prevPalmY) / dt;
+                const palmVz = (pcZ - state.prevPalmZ) / dt;
+                state.palmSpeed = Math.hypot((pcX - state.palmCenter.x) / dt, palmVy, palmVz);
+                state.palmCenter = { x: pcX, y: pcY, z: pcZ };
+                state.prevPalmY = pcY;
+                state.prevPalmZ = pcZ;
+
+                // 3. Compute 3D Velocity & Deceleration for each Striking Landmark (8, 12, 16, 4)
+                STRIKE_LANDMARKS.forEach(item => {
+                    const fState = state.fingers[item.idx];
+                    const pt = lm[item.idx];
+
+                    const vx = (pt.x - fState.prevX) / dt;
+                    const vy = (pt.y - fState.prevY) / dt; // Positive vy = moving downward
+                    const vz = (pt.z - fState.prevZ) / dt; // Negative vz = moving toward camera/pan
+
+                    fState.prevX = pt.x;
+                    fState.prevY = pt.y;
+                    fState.prevZ = pt.z;
+
+                    fState.vx = vx;
+                    fState.vy = vy;
+                    fState.vz = vz;
+
+                    // Scale normalized velocity to physical meters/sec approximation (~1.35m span)
+                    const physicalScale = 1.35;
+                    fState.speed = Math.hypot(vx, vy, vz * 0.85) * physicalScale;
+
+                    // Downward / Forward Strike Velocity component
+                    const forwardSpeed = Math.max(0, (vy * 0.82 - vz * 0.65) * physicalScale);
+
+                    // Track peak forward speed while approaching
+                    if (forwardSpeed > fState.peakForwardSpeed) {
+                        fState.peakForwardSpeed = forwardSpeed;
+                    }
+
+                    // Whip deceleration: rapid drop in forward velocity at impact/rebound
+                    const decel = Math.max(0, (fState.prevForwardSpeed - forwardSpeed) / dt);
+                    fState.deceleration = decel;
+                    fState.prevForwardSpeed = forwardSpeed;
+
+                    // Re-arm logic: Must slow down or move upward/backward after a strike
+                    if (!fState.armed && (nowMs - fState.lastStrikeTime) >= 48) {
+                        if (forwardSpeed < APP_STATE.strikeVelocityThreshold * 0.42 || vy < -0.08) {
+                            fState.armed = true;
+                            fState.peakForwardSpeed = 0;
+                        }
+                    }
+                });
+
+                return state;
+            }
+        }
+
+        const kinematicsTracker = new HandKinematicsTracker();
+
+        /**
+         * ============================================================================
+         * 4. STRIKE GATING (ANTI-HOVER) & 4 ARTICULATION TECHNIQUES DETECTOR
+         * Evaluates hand kinematics against the 3D-projected Handpan Tonefields:
+         * 1. Fingertip Strike (Steep finger angle + high whip deceleration)
+         * 2. Thumb Strike (Landmark 4 lowest or thumb lead -> warm fundamental emphasis)
+         * 3. Palm Slap / Tak (Flat palm parallel to pan + high downward velocity)
+         * 4. Hand Mute / Damping (Flat palm resting with low velocity on active note)
+         * ============================================================================
+         */
+        function evaluateHandInteractions(handState, nowMs, canvasWidth, canvasHeight) {
+            const lm = handState.smoothedLandmarks;
+            const threshold = APP_STATE.strikeVelocityThreshold;
+
+            // Update continuous HUD velocity & palm angle
+            const indexFinger = handState.fingers[8];
+            APP_STATE.lastTelemetry.velocity = Math.max(indexFinger.speed, handState.palmSpeed);
+            APP_STATE.lastTelemetry.accel = indexFinger.deceleration;
+            APP_STATE.lastTelemetry.pitchDeg = handState.palmPitchDeg;
+            APP_STATE.lastTelemetry.rollDeg = handState.palmRollDeg;
+
+            // --- TECHNIQUE 4: HAND MUTE / DAMPING ---
+            // If palm is relatively flat (flatness > 0.64) and hand speed is very low (< 0.28 m/s)
+            if (handState.palmFlatness > 0.62 && handState.palmSpeed < 0.28) {
+                const palmPx = handState.palmCenter.x * canvasWidth;
+                const palmPy = handState.palmCenter.y * canvasHeight;
+
+                for (const tf of APP_STATE.computedTonefields) {
+                    const dist = Math.hypot(palmPx - tf.x, palmPy - tf.y);
+                    if (dist < tf.rx * 1.05) {
+                        const damped = audioEngine.dampNote(tf.id);
+                        if (damped) {
+                            triggerVisualRipple(tf.x, tf.y, tf.rx * 0.8, '#10b981', 0.4);
+                            updateHUDStrike(tf, 0.1, 0, 'خفه کردن صدا (Hand Mute)');
+                        }
+                    }
+                }
+            }
+
+            // --- TECHNIQUE 3: PALM SLAP / TAK ---
+            // Flat palm descending rapidly onto the pan or rim/shoulder
+            if (
+                handState.palmFlatness > 0.68 &&
+                handState.palmSpeed > threshold * 1.45 &&
+                (nowMs - handState.slapCooldown) > 130
+            ) {
+                const palmPx = handState.palmCenter.x * canvasWidth;
+                const palmPy = handState.palmCenter.y * canvasHeight;
+                const panCx = APP_STATE.panCenterX * canvasWidth;
+                const panCy = APP_STATE.panCenterY * canvasHeight;
+                const panDist = Math.hypot(palmPx - panCx, palmPy - panCy);
+
+                if (panDist <= APP_STATE.currentPanOuterRadius * 1.05) {
+                    handState.slapCooldown = nowMs;
+                    // Disarm fingers briefly so palm slap doesn't double-trigger 4 fingers
+                    STRIKE_LANDMARKS.forEach(s => {
+                        handState.fingers[s.idx].armed = false;
+                        handState.fingers[s.idx].lastStrikeTime = nowMs;
+                    });
+
+                    const velNorm = Math.min(1.0, handState.palmSpeed / 2.6);
+                    // Find closest tonefield or use interstitial Shoulder Tak tone
+                    let targetNote = { id: 'tak_rim', label: 'TAK', freq: 375.0 };
+                    let minEcc = 0.85;
+                    for (const tf of APP_STATE.computedTonefields) {
+                        const d = Math.hypot(palmPx - tf.x, palmPy - tf.y);
+                        if (d < tf.rx * 1.1) {
+                            targetNote = tf;
+                            minEcc = Math.min(1.0, d / tf.rx);
+                            break;
+                        }
+                    }
+
+                    audioEngine.triggerNote(targetNote, {
+                        velocityNorm: velNorm,
+                        eccentricity: minEcc,
+                        technique: 'SLAP',
+                        palmPitchDeg: handState.palmPitchDeg
+                    });
+
+                    triggerVisualRipple(palmPx, palmPy, 75, '#00f3ff', velNorm);
+                    updateHUDStrike(targetNote, handState.palmSpeed, minEcc, 'سیلی کف دست (Palm Slap / Tak)');
+                    return;
+                }
+            }
+
+            // --- TECHNIQUES 1 & 2: FINGERTIP STRIKE & THUMB STRIKE ---
+            // Anti-Hover Gating: Requires armed state + 45ms cooldown + peak forward velocity > threshold + deceleration impulse
+            const thumbY = lm[4].y;
+            const otherTipsMinY = Math.min(lm[8].y, lm[12].y, lm[16].y);
+
+            STRIKE_LANDMARKS.forEach(item => {
+                const fState = handState.fingers[item.idx];
+                if (!fState.armed) return;
+                if ((nowMs - fState.lastStrikeTime) < 45) return; // 45ms minimum cooldown
+
+                // Strike condition: Peak velocity exceeded threshold AND deceleration (whip stop/rebound) occurred
+                const hasVelocity = fState.peakForwardSpeed >= threshold;
+                const hasWhipDecel = fState.deceleration >= (threshold * 7.5) ||
+                    (fState.prevForwardSpeed >= threshold * 1.18 && fState.vy > 0.15);
+
+                if (hasVelocity && hasWhipDecel) {
+                    const fx = lm[item.idx].x * canvasWidth;
+                    const fy = lm[item.idx].y * canvasHeight;
+
+                    // Check collision with any Tonefield circle
+                    for (const tf of APP_STATE.computedTonefields) {
+                        // Elliptical distance accounting for perspective tilt
+                        const dx = (fx - tf.x) / tf.rx;
+                        const dy = (fy - tf.y) / tf.ry;
+                        const normDist = Math.hypot(dx, dy);
+
+                        if (normDist <= 1.08) {
+                            fState.armed = false;
+                            fState.lastStrikeTime = nowMs;
+
+                            const eccentricity = Math.min(1.0, normDist);
+                            const velNorm = Math.min(1.0, fState.peakForwardSpeed / 2.4);
+                            fState.peakForwardSpeed = 0;
+
+                            // Determine if Thumb Strike vs Fingertip Strike
+                            const isThumbStrike = item.isThumb || (thumbY > otherTipsMinY + 0.035 && item.idx === 4);
+                            const techCode = isThumbStrike ? 'THUMB' : 'FINGERTIP';
+                            const techLabel = isThumbStrike
+                                ? 'ضربه کنار شست (Thumb Strike)'
+                                : `ضربه نوک انگشت (${item.name})`;
+
+                            audioEngine.triggerNote(tf, {
+                                velocityNorm: velNorm,
+                                eccentricity: eccentricity,
+                                technique: techCode,
+                                palmPitchDeg: handState.palmPitchDeg
+                            });
+
+                            APP_STATE.noteGlows[tf.id] = { intensity: 1.0, color: isThumbStrike ? '#fbbf24' : '#38bdf8' };
+                            triggerVisualRipple(fx, fy, tf.rx * 1.25, isThumbStrike ? '#fbbf24' : '#00f3ff', velNorm);
+                            updateHUDStrike(tf, fState.speed, eccentricity, techLabel);
+                            return;
+                        }
+                    }
+
+                    // Check if struck the metallic shoulder/rim of the handpan (outside tonefields but inside outer shell)
+                    const panCx = APP_STATE.panCenterX * canvasWidth;
+                    const panCy = APP_STATE.panCenterY * canvasHeight;
+                    const distFromPanCenter = Math.hypot(fx - panCx, fy - panCy);
+                    if (distFromPanCenter <= APP_STATE.currentPanOuterRadius * 1.02) {
+                        fState.armed = false;
+                        fState.lastStrikeTime = nowMs;
+                        const velNorm = Math.min(1.0, fState.peakForwardSpeed / 2.5);
+                        fState.peakForwardSpeed = 0;
+
+                        const rimNote = { id: 'shoulder_tak', label: 'Rim/Tak', freq: 395.0 };
+                        audioEngine.triggerNote(rimNote, {
+                            velocityNorm: velNorm * 0.85,
+                            eccentricity: 0.92,
+                            technique: 'SLAP',
+                            palmPitchDeg: handState.palmPitchDeg
+                        });
+                        triggerVisualRipple(fx, fy, 48, '#f59e0b', velNorm * 0.8);
+                        updateHUDStrike(rimNote, fState.speed, 0.92, 'ضربه حاشیه ساز (Shoulder Tak)');
+                    }
+                }
+            });
+        }
+
+        function triggerVisualRipple(x, y, maxRadius, color, strength = 0.8) {
+            APP_STATE.ripples.push({
+                x, y,
+                radius: 6,
+                maxRadius: maxRadius * (0.75 + strength * 0.45),
+                alpha: Math.min(1.0, 0.55 + strength * 0.45),
+                color,
+                lineWidth: 2 + strength * 3.5
+            });
+        }
+
+        function updateHUDStrike(noteObj, velocityMs, eccentricity, techniqueText) {
+            APP_STATE.lastTelemetry.note = noteObj.label;
+            APP_STATE.lastTelemetry.freq = noteObj.freq;
+            APP_STATE.lastTelemetry.technique = techniqueText;
+            APP_STATE.lastTelemetry.eccentricity = eccentricity;
+
+            document.getElementById('hud-note').textContent = noteObj.label;
+            document.getElementById('hud-freq').textContent = `${noteObj.freq.toFixed(2)} Hz`;
+            document.getElementById('hud-technique').textContent = techniqueText;
+            document.getElementById('hud-eccentricity').textContent = eccentricity.toFixed(2);
+        }
+
+        function refreshContinuousHUD() {
+            const t = APP_STATE.lastTelemetry;
+            const velClamped = Math.min(3.5, t.velocity);
+            document.getElementById('hud-velocity').textContent = `${velClamped.toFixed(2)} m/s`;
+            document.getElementById('hud-velocity-bar').style.width = `${Math.min(100, (velClamped / 2.8) * 100)}%`;
+
+            const accelClamped = Math.min(60, t.accel);
+            document.getElementById('hud-accel').textContent = `${accelClamped.toFixed(1)} m/s²`;
+            document.getElementById('hud-accel-bar').style.width = `${Math.min(100, (accelClamped / 35) * 100)}%`;
+
+            document.getElementById('hud-palm-angle').textContent =
+                `${Math.round(t.pitchDeg)}° / ${Math.round(t.rollDeg)}°`;
+        }
+
+        /**
+         * ============================================================================
+         * 5. PROCEDURAL HAMMERED NITRIDED BRONZE TEXTURE & AR CANVAS RENDERER
+         * Renders:
+         * - Mirrored Webcam video feed (or dark studio ambience if touch-only)
+         * - Semi-transparent 3D Perspective Handpan with hammered bronze patina
+         * - Central Ding dome + 8 peripheral dimpled tonefields in Zig-Zag layout
+         * - Luminous multi-ring strike ripples & tonefield harmonic glow
+         * - 3D Hand Skeletons, Velocity Vectors & Palm Surface Normal Vector indicator
+         * ============================================================================
+         */
+        const canvas = document.getElementById('ar-canvas');
+        const ctx = canvas.getContext('2d');
+        const videoElem = document.getElementById('webcam-video');
+
+        // Pre-render procedural hammered metal pattern onto an offscreen canvas for 60fps performance
+        const metalPatternCanvas = document.createElement('canvas');
+        metalPatternCanvas.width = 512;
+        metalPatternCanvas.height = 512;
+        function generateHammeredMetalTexture() {
+            const mCtx = metalPatternCanvas.getContext('2d');
+            mCtx.clearRect(0, 0, 512, 512);
+            // Draw hundreds of subtle artisanal hammer dimples
+            for (let i = 0; i < 420; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const r = 6 + Math.random() * 14;
+                const grad = mCtx.createRadialGradient(x - r * 0.25, y - r * 0.25, 1, x, y, r);
+                grad.addColorStop(0, 'rgba(255, 228, 175, 0.065)');
+                grad.addColorStop(0.6, 'rgba(140, 98, 45, 0.03)');
+                grad.addColorStop(1, 'rgba(15, 18, 28, 0.07)');
+                mCtx.fillStyle = grad;
+                mCtx.beginPath();
+                mCtx.arc(x, y, r, 0, Math.PI * 2);
+                mCtx.fill();
+            }
+        }
+        generateHammeredMetalTexture();
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function computeHandpanGeometry() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const minDim = Math.min(w, h);
+            const outerR = minDim * 0.37 * APP_STATE.radiusScale;
+            APP_STATE.currentPanOuterRadius = outerR;
+
+            const cx = APP_STATE.panCenterX * w;
+            const cy = APP_STATE.panCenterY * h;
+            const tiltRad = (APP_STATE.tiltAngleDeg * Math.PI) / 180;
+            const tiltCos = Math.cos(tiltRad);
+
+            const scaleData = HANDPAN_SCALES[APP_STATE.currentScaleKey];
+            const tonefields = [];
+
+            // 1. Central Ding Tonefield
+            tonefields.push({
+                id: scaleData.ding.id,
+                label: scaleData.ding.label,
+                sub: 'DING',
+                freq: scaleData.ding.freq,
+                x: cx,
+                y: cy - outerR * 0.03 * Math.sin(tiltRad),
+                rx: outerR * 0.235,
+                ry: outerR * 0.235 * tiltCos,
+                isDing: true
+            });
+
+            // 2. 8 Peripheral Tonefields arranged around the shell
+            const ringOrbitR = outerR * 0.635;
+            scaleData.notes.forEach((n, idx) => {
+                const rad = (n.angleDeg * Math.PI) / 180;
+                const nx = cx + Math.cos(rad) * ringOrbitR;
+                const ny = cy + Math.sin(rad) * ringOrbitR * tiltCos;
+
+                // Slightly smaller tonefields for higher frequency notes (authentic acoustics)
+                const sizeFactor = 0.195 - (idx * 0.0045);
+                const rx = outerR * sizeFactor;
+                const ry = rx * tiltCos;
+
+                tonefields.push({
+                    id: n.id,
+                    label: n.label,
+                    sub: `#${idx + 1}`,
+                    freq: n.freq,
+                    x: nx,
+                    y: ny,
+                    rx,
+                    ry,
+                    angleRad: rad,
+                    isDing: false
+                });
+            });
+
+            APP_STATE.computedTonefields = tonefields;
+            return { cx, cy, outerR, tiltCos, tiltRad };
+        }
+
+        function drawHandpan3D(geom) {
+            const { cx, cy, outerR, tiltCos, tiltRad } = geom;
+            const outerRy = outerR * tiltCos;
+            const bottomDepthOffset = outerR * 0.18 * Math.sin(tiltRad);
+
+            ctx.save();
+            ctx.globalAlpha = APP_STATE.opacity;
+
+            // 1. Bottom Shell / Rim 3D Extrusion for Perspective Depth
+            if (bottomDepthOffset > 2) {
+                const rimGrad = ctx.createLinearGradient(cx - outerR, cy, cx + outerR, cy + bottomDepthOffset);
+                rimGrad.addColorStop(0, '#14100c');
+                rimGrad.addColorStop(0.5, '#47331b');
+                rimGrad.addColorStop(1, '#120e0a');
+
+                ctx.beginPath();
+                ctx.ellipse(cx, cy + bottomDepthOffset, outerR * 0.98, outerRy * 0.98, 0, 0, Math.PI * 2);
+                ctx.fillStyle = rimGrad;
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+                ctx.shadowBlur = 35;
+                ctx.shadowOffsetY = 18;
+                ctx.fill();
+            }
+
+            // 2. Main Top Dome Shell (Nitrided Heat-Treated Bronze / Gunmetal Gradient)
+            ctx.save();
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, outerR, outerRy, 0, 0, Math.PI * 2);
+            ctx.clip();
+
+            const domeGrad = ctx.createRadialGradient(
+                cx - outerR * 0.25,
+                cy - outerRy * 0.28,
+                outerR * 0.06,
+                cx,
+                cy,
+                outerR * 1.05
+            );
+            domeGrad.addColorStop(0, '#d8b26e');     // Warm bronze specular highlight
+            domeGrad.addColorStop(0.35, '#7c5b32');  // Nitrided golden-brown
+            domeGrad.addColorStop(0.72, '#2d2420');  // Deep heat-treated steel
+            domeGrad.addColorStop(0.94, '#171519');  // Dark rim
+            domeGrad.addColorStop(1, '#4a3820');
+
+            ctx.fillStyle = domeGrad;
+            ctx.fillRect(cx - outerR, cy - outerRy, outerR * 2, outerRy * 2);
+
+            // Overlay Procedural Hammered Metal Texture
+            ctx.drawImage(
+                metalPatternCanvas,
+                cx - outerR,
+                cy - outerRy,
+                outerR * 2,
+                outerRy * 2
+            );
+            ctx.restore();
+
+            // 3. Outer Rope / Brass Rim Binding Ring
+            ctx.beginPath();
+            ctx.ellipse(cx, cy, outerR, outerRy, 0, 0, Math.PI * 2);
+            ctx.lineWidth = 4.5;
+            ctx.strokeStyle = 'rgba(230, 194, 128, 0.65)';
+            ctx.stroke();
+
+            // 4. Draw Each Tonefield (Central Ding + 8 Peripheral Dimpled Tonefields)
+            APP_STATE.computedTonefields.forEach(tf => {
+                const glowState = APP_STATE.noteGlows[tf.id];
+                const glowVal = glowState ? glowState.intensity : 0;
+
+                ctx.save();
+                // Tonefield outer flattened border
+                ctx.beginPath();
+                ctx.ellipse(tf.x, tf.y, tf.rx, tf.ry, 0, 0, Math.PI * 2);
+
+                const tfGrad = ctx.createRadialGradient(
+                    tf.x - tf.rx * 0.2,
+                    tf.y - tf.ry * 0.2,
+                    tf.rx * 0.1,
+                    tf.x,
+                    tf.y,
+                    tf.rx
+                );
+
+                if (glowVal > 0.02) {
+                    tfGrad.addColorStop(0, `rgba(255, 240, 195, ${0.45 + glowVal * 0.45})`);
+                    tfGrad.addColorStop(0.6, `rgba(212, 160, 75, ${0.35 + glowVal * 0.35})`);
+                    tfGrad.addColorStop(1, 'rgba(30, 26, 24, 0.78)');
+                } else {
+                    tfGrad.addColorStop(0, 'rgba(225, 188, 125, 0.28)');
+                    tfGrad.addColorStop(0.65, 'rgba(65, 50, 35, 0.48)');
+                    tfGrad.addColorStop(1, 'rgba(22, 20, 25, 0.75)');
+                }
+
+                ctx.fillStyle = tfGrad;
+                ctx.fill();
+
+                ctx.lineWidth = 1.8 + glowVal * 2.5;
+                ctx.strokeStyle = glowVal > 0.05
+                    ? `rgba(0, 243, 255, ${0.5 + glowVal * 0.5})`
+                    : 'rgba(235, 200, 140, 0.48)';
+                ctx.stroke();
+
+                // Inner Acoustic Dimple / Dome (Raised for Ding, Indented for peripheral notes)
+                ctx.beginPath();
+                ctx.ellipse(tf.x, tf.y, tf.rx * 0.36, tf.ry * 0.36, 0, 0, Math.PI * 2);
+                ctx.fillStyle = tf.isDing
+                    ? 'rgba(245, 208, 138, 0.48)'
+                    : 'rgba(15, 16, 22, 0.58)';
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(235, 200, 140, 0.35)';
+                ctx.stroke();
+
+                // Note Typography (Note Name & Frequency)
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = glowVal > 0.1 ? '#ffffff' : '#fde68a';
+                ctx.font = `bold ${Math.round(tf.rx * 0.34)}px "JetBrains Mono", monospace`;
+                ctx.fillText(tf.label, tf.x, tf.y - tf.ry * 0.06);
+
+                ctx.fillStyle = 'rgba(226, 232, 240, 0.72)';
+                ctx.font = `500 ${Math.round(tf.rx * 0.19)}px "JetBrains Mono", monospace`;
+                ctx.fillText(`${Math.round(tf.freq)}Hz`, tf.x, tf.y + tf.ry * 0.52);
+
+                ctx.restore();
+
+                // Decay glow intensity
+                if (glowState && glowState.intensity > 0.01) {
+                    glowState.intensity *= 0.91;
+                }
+            });
+
+            ctx.restore();
+        }
+
+        function drawRipples() {
+            for (let i = APP_STATE.ripples.length - 1; i >= 0; i--) {
+                const r = APP_STATE.ripples[i];
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = r.color;
+                ctx.globalAlpha = r.alpha;
+                ctx.lineWidth = r.lineWidth;
+                ctx.shadowColor = r.color;
+                ctx.shadowBlur = 14;
+                ctx.stroke();
+
+                // Secondary inner harmonic ring
+                if (r.radius > 14) {
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.radius * 0.62, 0, Math.PI * 2);
+                    ctx.lineWidth = r.lineWidth * 0.5;
+                    ctx.stroke();
+                }
+                ctx.restore();
+
+                r.radius += (r.maxRadius - r.radius) * 0.16 + 1.8;
+                r.alpha *= 0.90;
+                if (r.alpha < 0.025) {
+                    APP_STATE.ripples.splice(i, 1);
+                }
+            }
+        }
+
+        const HAND_CONNECTIONS = [
+            [0,1],[1,2],[2,3],[3,4],       // Thumb
+            [0,5],[5,6],[6,7],[7,8],       // Index
+            [5,9],[9,10],[10,11],[11,12],  // Middle
+            [9,13],[13,14],[14,15],[15,16],// Ring
+            [13,17],[0,17],[17,18],[18,19],[19,20] // Pinky & Palm
+        ];
+
+        function drawHandSkeletonAndVectors(handState) {
+            const lm = handState.smoothedLandmarks;
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.save();
+            // 1. Skeleton Bones
+            ctx.lineWidth = 2.2;
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.55)';
+            HAND_CONNECTIONS.forEach(([a, b]) => {
+                ctx.beginPath();
+                ctx.moveTo(lm[a].x * w, lm[a].y * h);
+                ctx.lineTo(lm[b].x * w, lm[b].y * h);
+                ctx.stroke();
+            });
+
+            // 2. Joints
+            for (let i = 0; i < 21; i++) {
+                const isStrikeTip = (i === 4 || i === 8 || i === 12 || i === 16);
+                const px = lm[i].x * w;
+                const py = lm[i].y * h;
+
+                ctx.beginPath();
+                ctx.arc(px, py, isStrikeTip ? 6.5 : 3.2, 0, Math.PI * 2);
+                ctx.fillStyle = isStrikeTip ? '#fbbf24' : '#00f3ff';
+                ctx.fill();
+
+                if (isStrikeTip) {
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+
+                    // Draw instantaneous Velocity Vector arrow on striking fingertips
+                    const fState = handState.fingers[i];
+                    if (fState && fState.speed > 0.15) {
+                        ctx.beginPath();
+                        ctx.moveTo(px, py);
+                        ctx.lineTo(px + fState.vx * 38, py + fState.vy * 38);
+                        ctx.strokeStyle = '#f43f5e';
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // 3. Draw Palm Center & Cross-Product Normal Orientation Vector
+            const pcx = handState.palmCenter.x * w;
+            const pcy = handState.palmCenter.y * h;
+            const norm = handState.palmNormal;
+
+            ctx.beginPath();
+            ctx.arc(pcx, pcy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#10b981';
+            ctx.fill();
+
+            // Project 3D normal vector onto 2D HUD indicator
+            ctx.beginPath();
+            ctx.moveTo(pcx, pcy);
+            ctx.lineTo(pcx + norm.x * 55, pcy + norm.y * 55);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        /**
+         * ============================================================================
+         * 6. MEDIAPIPE HANDS SETUP & MAIN RENDERING LOOP
+         * ============================================================================
+         */
+        let latestHandsResults = null;
+        let cameraActive = false;
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+
+        const mpHands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        mpHands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.65,
+            minTrackingConfidence: 0.65
+        });
+
+        mpHands.onResults((results) => {
+            latestHandsResults = results;
+        });
+
+        async function startWebcamAR() {
+            const statusText = document.getElementById('cam-status-text');
+            const indicator = document.getElementById('cam-indicator');
+            try {
+                await audioEngine.init();
+                statusText.textContent = 'در حال راه‌اندازی دوربین و مدل سه‌بعدی دست...';
+
+                const cam = new Camera(videoElem, {
+                    onFrame: async () => {
+                        await mpHands.send({ image: videoElem });
+                    },
+                    width: 1280,
+                    height: 720
+                });
+                await cam.start();
+                cameraActive = true;
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                statusText.textContent = 'ردیابی سه‌بعدی دو دست فعال است (Ultra-Low Latency)';
+            } catch (err) {
+                cameraActive = false;
+                indicator.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+                statusText.textContent = 'حالت بدون وب‌کم (نواختن با لمس و ماوس فعال است)';
+            }
+        }
+
+        function renderLoop(nowMs) {
+            requestAnimationFrame(renderLoop);
+
+            // Calculate FPS
+            frameCount++;
+            if (nowMs - lastFpsUpdate >= 500) {
+                const fps = Math.round((frameCount * 1000) / (nowMs - lastFpsUpdate));
+                document.getElementById('fps-counter').textContent = `${fps} FPS`;
+                frameCount = 0;
+                lastFpsUpdate = nowMs;
+            }
+
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. Render Mirrored Webcam Frame or Studio Ambient Background
+            if (cameraActive && videoElem.readyState >= 2) {
+                ctx.save();
+                ctx.translate(w, 0);
+                ctx.scale(-1, 1);
+                // Cover-fit video calculation
+                const vw = videoElem.videoWidth || 1280;
+                const vh = videoElem.videoHeight || 720;
+                const scale = Math.max(w / vw, h / vh);
+                const dw = vw * scale;
+                const dh = vh * scale;
+                ctx.drawImage(videoElem, (w - dw) * 0.5, (h - dh) * 0.5, dw, dh);
+                ctx.restore();
+
+                // Subtle dark vignette for AR HUD contrast
+                const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.25, w * 0.5, h * 0.5, w * 0.75);
+                vig.addColorStop(0, 'rgba(9, 10, 15, 0.12)');
+                vig.addColorStop(1, 'rgba(9, 10, 15, 0.55)');
+                ctx.fillStyle = vig;
+                ctx.fillRect(0, 0, w, h);
+            } else {
+                const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 50, w * 0.5, h * 0.5, Math.max(w, h) * 0.7);
+                bgGrad.addColorStop(0, '#171c2b');
+                bgGrad.addColorStop(1, '#08090e');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, w, h);
+            }
+
+            // 2. Compute & Draw 3D Perspective Handpan
+            const geom = computeHandpanGeometry();
+            drawHandpan3D(geom);
+
+            // 3. Process Detected Hands Kinematics & Articulation
+            if (latestHandsResults && latestHandsResults.multiHandLandmarks && latestHandsResults.multiHandLandmarks.length > 0) {
+                const numHands = latestHandsResults.multiHandLandmarks.length;
+                document.getElementById('active-hands-badge').textContent = `Hands: ${numHands}`;
+
+                for (let i = 0; i < numHands; i++) {
+                    const rawLm = latestHandsResults.multiHandLandmarks[i];
+                    const handedness = latestHandsResults.multiHandedness?.[i]?.label || 'Right';
+                    const handState = kinematicsTracker.updateHand(i, rawLm, handedness, nowMs);
+                    evaluateHandInteractions(handState, nowMs, w, h);
+                    drawHandSkeletonAndVectors(handState);
+                }
+            } else {
+                document.getElementById('active-hands-badge').textContent = 'Hands: 0';
+            }
+
+            // 4. Draw Strike Ripples & Refresh Telemetry Bar
+            drawRipples();
+            refreshContinuousHUD();
+
+            // 5. Update Recording Timer if active
+            if (audioEngine.isRecording) {
+                const elapsedSec = Math.floor((nowMs - audioEngine.recordStartTime) / 1000);
+                const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+                const secs = String(elapsedSec % 60).padStart(2, '0');
+                document.getElementById('record-timer').textContent = `${mins}:${secs}`;
+            }
+        }
+
+        /**
+         * ============================================================================
+         * 7. INTERACTIVE MOUSE / TOUCH PLAYING, DRAG CALIBRATION & UI BINDINGS
+         * Allows user to also play notes directly by clicking/touching or drag the
+         * handpan across the screen to calibrate its exact table position.
+         * ============================================================================
+         */
+        function handlePointerDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const px = clientX - rect.left;
+            const py = clientY - rect.top;
+
+            audioEngine.init();
+
+            // Check if pointer struck any Tonefield
+            for (const tf of APP_STATE.computedTonefields) {
+                const dx = (px - tf.x) / tf.rx;
+                const dy = (py - tf.y) / tf.ry;
+                const normDist = Math.hypot(dx, dy);
+
+                if (normDist <= 1.0) {
+                    const ecc = Math.min(1.0, normDist);
+                    const isRightClick = e.button === 2;
+                    const technique = isRightClick ? 'SLAP' : (ecc < 0.35 ? 'THUMB' : 'FINGERTIP');
+
+                    audioEngine.triggerNote(tf, {
+                        velocityNorm: 0.82,
+                        eccentricity: ecc,
+                        technique: technique,
+                        palmPitchDeg: 28
+                    });
+
+                    APP_STATE.noteGlows[tf.id] = { intensity: 1.0, color: '#38bdf8' };
+                    triggerVisualRipple(px, py, tf.rx * 1.3, '#00f3ff', 0.85);
+                    updateHUDStrike(
+                        tf,
+                        1.45,
+                        ecc,
+                        ecc < 0.35 ? 'ضربه مرکزی گرم (Center Strike)' : 'ضربه لبه هارمونیک (Edge Strike)'
+                    );
+
+                    // If not locked and dragging on Ding with Shift or long drag, allow moving pan
+                    if (!APP_STATE.lockPosition && tf.isDing) {
+                        APP_STATE.isDraggingPan = true;
+                        APP_STATE.dragOffsetX = px - APP_STATE.panCenterX * canvas.width;
+                        APP_STATE.dragOffsetY = py - APP_STATE.panCenterY * canvas.height;
+                    }
+                    return;
+                }
+            }
+
+            // Check if pointer is inside outer shell (Shoulder Tak or Drag Calibration)
+            const panCx = APP_STATE.panCenterX * canvas.width;
+            const panCy = APP_STATE.panCenterY * canvas.height;
+            if (Math.hypot(px - panCx, py - panCy) <= APP_STATE.currentPanOuterRadius) {
+                const takNote = { id: 'shoulder_tak', label: 'TAK', freq: 385.0 };
+                audioEngine.triggerNote(takNote, {
+                    velocityNorm: 0.75,
+                    eccentricity: 0.9,
+                    technique: 'SLAP',
+                    palmPitchDeg: 5
+                });
+                triggerVisualRipple(px, py, 55, '#fbbf24', 0.75);
+                updateHUDStrike(takNote, 1.3, 0.9, 'ضربه کوبشی بدنه (Palm Slap / Tak)');
+
+                if (!APP_STATE.lockPosition) {
+                    APP_STATE.isDraggingPan = true;
+                    APP_STATE.dragOffsetX = px - panCx;
+                    APP_STATE.dragOffsetY = py - panCy;
+                }
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (!APP_STATE.isDraggingPan || APP_STATE.lockPosition) return;
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const px = clientX - rect.left;
+            const py = clientY - rect.top;
+
+            APP_STATE.panCenterX = Math.min(0.85, Math.max(0.15, (px - APP_STATE.dragOffsetX) / canvas.width));
+            APP_STATE.panCenterY = Math.min(0.85, Math.max(0.20, (py - APP_STATE.dragOffsetY) / canvas.height));
+        }
+
+        function handlePointerUp() {
+            APP_STATE.isDraggingPan = false;
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); }, { passive: false });
+        window.addEventListener('touchmove', (e) => { if (APP_STATE.isDraggingPan) handlePointerMove(e); }, { passive: false });
+        window.addEventListener('touchend', handlePointerUp);
+
+        // UI Controls Binding
+        document.getElementById('start-ar-btn').addEventListener('click', async () => {
+            document.getElementById('init-overlay').classList.add('hidden');
+            await startWebcamAR();
+        });
+
+        document.getElementById('start-touch-btn').addEventListener('click', async () => {
+            document.getElementById('init-overlay').classList.add('hidden');
+            await audioEngine.init();
+            document.getElementById('cam-status-text').textContent = 'حالت استودیو لمسی / ماوس فعال است';
+        });
+
+        document.getElementById('scale-select').addEventListener('change', (e) => {
+            APP_STATE.currentScaleKey = e.target.value;
+            renderCustomSampleSlots();
+        });
+
+        // Sliders
+        document.getElementById('slider-radius').addEventListener('input', (e) => {
+            APP_STATE.radiusScale = parseInt(e.target.value, 10) / 100;
+            document.getElementById('val-radius').textContent = `${e.target.value}%`;
+        });
+
+        document.getElementById('slider-tilt').addEventListener('input', (e) => {
+            APP_STATE.tiltAngleDeg = parseInt(e.target.value, 10);
+            document.getElementById('val-tilt').textContent = `${e.target.value}°`;
+        });
+
+        document.getElementById('slider-opacity').addEventListener('input', (e) => {
+            APP_STATE.opacity = parseInt(e.target.value, 10) / 100;
+            document.getElementById('val-opacity').textContent = `${e.target.value}%`;
+        });
+
+        document.getElementById('lock-position-toggle').addEventListener('change', (e) => {
+            APP_STATE.lockPosition = e.target.checked;
+        });
+
+        document.getElementById('slider-threshold').addEventListener('input', (e) => {
+            APP_STATE.strikeVelocityThreshold = parseInt(e.target.value, 10) / 100;
+            document.getElementById('val-threshold').textContent = `${APP_STATE.strikeVelocityThreshold.toFixed(2)} m/s`;
+        });
+
+        document.getElementById('slider-ema').addEventListener('input', (e) => {
+            APP_STATE.baseEmaAlpha = parseInt(e.target.value, 10) / 100;
+            document.getElementById('val-ema').textContent = APP_STATE.baseEmaAlpha.toFixed(2);
+        });
+
+        document.getElementById('slider-decay').addEventListener('input', (e) => {
+            APP_STATE.sustainDecaySec = parseInt(e.target.value, 10) / 10;
+            document.getElementById('val-decay').textContent = `${APP_STATE.sustainDecaySec.toFixed(1)} s`;
+        });
+
+        document.getElementById('slider-reverb').addEventListener('input', (e) => {
+            APP_STATE.reverbMix = parseInt(e.target.value, 10) / 100;
+            document.getElementById('val-reverb').textContent = `${e.target.value}%`;
+            audioEngine.updateReverbMix(APP_STATE.reverbMix);
+        });
+
+        document.getElementById('slider-sample-mix').addEventListener('input', (e) => {
+            APP_STATE.sampleMix = parseInt(e.target.value, 10) / 100;
+            document.getElementById('val-sample-mix').textContent = `${e.target.value}%`;
+        });
+
+        // Test Harmonic Arpeggio Button
+        document.getElementById('test-chord-btn').addEventListener('click', async () => {
+            await audioEngine.init();
+            const fields = APP_STATE.computedTonefields;
+            fields.forEach((tf, i) => {
+                setTimeout(() => {
+                    audioEngine.triggerNote(tf, {
+                        velocityNorm: 0.72,
+                        eccentricity: 0.35,
+                        technique: i === 0 ? 'THUMB' : 'FINGERTIP',
+                        palmPitchDeg: 25
+                    });
+                    APP_STATE.noteGlows[tf.id] = { intensity: 1.0, color: '#fbbf24' };
+                    triggerVisualRipple(tf.x, tf.y, tf.rx * 1.2, '#fbbf24', 0.75);
+                    updateHUDStrike(tf, 1.2, 0.35, 'تست هارمونیک ۱:۲:۳');
+                }, i * 160);
+            });
+        });
+
+        // Panels & Modals Toggles
+        const settingsPanel = document.getElementById('settings-panel');
+        document.getElementById('toggle-settings-btn').addEventListener('click', () => {
+            settingsPanel.classList.toggle('hidden');
+        });
+        document.getElementById('close-settings-btn').addEventListener('click', () => {
+            settingsPanel.classList.add('hidden');
+        });
+
+        const hudPanel = document.getElementById('telemetry-hud');
+        document.getElementById('toggle-hud-btn').addEventListener('click', () => {
+            hudPanel.classList.toggle('hidden');
+        });
+
+        // Audio Recorder Button
+        document.getElementById('record-btn').addEventListener('click', async () => {
+            await audioEngine.init();
+            const dot = document.getElementById('record-dot');
+            const label = document.getElementById('record-label');
+            const timer = document.getElementById('record-timer');
+            const dlBtn = document.getElementById('download-audio-btn');
+
+            const started = audioEngine.toggleRecording((audioUrl) => {
+                dlBtn.href = audioUrl;
+                dlBtn.download = `handpan-session-${Date.now()}.webm`;
+                dlBtn.classList.remove('hidden');
+            });
+
+            if (started) {
+                dot.classList.add('record-dot');
+                label.textContent = 'توقف ضبط';
+                timer.classList.remove('hidden');
+                dlBtn.classList.add('hidden');
+            } else {
+                dot.classList.remove('record-dot');
+                label.textContent = 'ضبط مجدد';
+                timer.classList.add('hidden');
+            }
+        });
+
+        // Custom WAV/MP3 Sample Loader Modal Logic
+        const samplesModal = document.getElementById('samples-modal');
+        document.getElementById('toggle-samples-btn').addEventListener('click', () => {
+            renderCustomSampleSlots();
+            samplesModal.classList.remove('hidden');
+        });
+        document.getElementById('close-samples-modal').addEventListener('click', () => {
+            samplesModal.classList.add('hidden');
+        });
+        document.getElementById('clear-samples-btn').addEventListener('click', () => {
+            audioEngine.customSamples.clear();
+            renderCustomSampleSlots();
+        });
+
+        function renderCustomSampleSlots() {
+            const container = document.getElementById('sample-slots-container');
+            container.innerHTML = '';
+            const scale = HANDPAN_SCALES[APP_STATE.currentScaleKey];
+            const allNotes = [scale.ding, ...scale.notes];
+
+            allNotes.forEach((n, idx) => {
+                const isLoaded = audioEngine.customSamples.has(n.id);
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800';
+                row.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="mono-font text-xs font-bold px-2 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">${n.label}</span>
+                        <div>
+                            <div class="text-xs font-semibold text-slate-200">${idx === 0 ? 'نت مرکزی (Ding)' : `نت پیرامونی #${idx}`}</div>
+                            <div class="mono-font text-[10px] text-slate-400">${n.freq.toFixed(2)} Hz</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] ${isLoaded ? 'text-emerald-400 font-semibold' : 'text-slate-500'}">
+                            ${isLoaded ? '✓ بارگذاری شد' : 'موتور فیزیکی'}
+                        </span>
+                        <label class="glass-btn px-2.5 py-1 rounded-lg text-xs text-cyan-300 cursor-pointer">
+                            انتخاب فایل
+                            <input type="file" accept="audio/*" data-note-id="${n.id}" class="hidden sample-file-input">
+                        </label>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            container.querySelectorAll('.sample-file-input').forEach(inp => {
+                inp.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    const noteId = e.target.getAttribute('data-note-id');
+                    if (file && noteId) {
+                        await audioEngine.loadCustomSample(noteId, file);
+                        renderCustomSampleSlots();
+                    }
+                });
+            });
+        }
+
+        // Start animation loop on window load
+        window.onload = function () {
+            computeHandpanGeometry();
+            requestAnimationFrame(renderLoop);
+        };
+    </script>
+</body>
+</html>

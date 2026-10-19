@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>استودیو پیانو واقعیت افزوده | AR Grand Piano Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #050811;
+      font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+      color: #f8fafc;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+      direction: ltr;
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .glass-pill {
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+    /* Custom range sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.15);
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+    @keyframes pulse-record {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.15); }
+    }
+    .recording-dot {
+      animation: pulse-record 1.2s infinite ease-in-out;
+    }
+  </style>
+</head>
+
+<body class="relative w-screen h-screen overflow-hidden select-none">
+
+  <!-- Hidden raw video element for MediaPipe input -->
+  <video id="webcam-video" class="hidden" playsinline muted></video>
+
+  <!-- Full-screen AR Canvas (Mirrored video + 3D Hand Kinematics + Perspective Piano) -->
+  <canvas id="ar-canvas" class="fixed inset-0 w-full h-full block z-0 cursor-pointer"></canvas>
+
+  <!-- Top HUD Bar -->
+  <header class="fixed top-3 inset-x-3 md:top-4 md:inset-x-6 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+    
+    <!-- Brand & Tracking Status -->
+    <div class="glass-panel rounded-2xl px-4 py-2.5 flex items-center gap-3 pointer-events-auto">
+      <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg shadow-sky-500/30">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+        </svg>
+        <span id="status-led" class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 ring-2 ring-slate-900"></span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm md:text-base font-bold text-white tracking-tight">پیانو واقعیت افزوده</h1>
+          <span class="text-[10px] font-mono-tech uppercase px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-400/30">AR 60FPS</span>
+        </div>
+        <p id="tracking-status-text" class="text-xs text-slate-300">آماده اتصال به وب‌کم یا لمس مستقیم...</p>
+      </div>
+    </div>
+
+    <!-- Center Live Telemetry HUD (Note, Frequency, Velocity, Polyphony) -->
+    <div class="glass-panel rounded-2xl px-4 py-2 flex items-center gap-4 md:gap-6 pointer-events-auto">
+      <div class="text-center min-w-[72px]">
+        <span class="block text-[10px] text-slate-400">نت فعال</span>
+        <div id="hud-note-name" class="text-lg md:text-xl font-extrabold text-sky-400 font-mono-tech tracking-wider">--</div>
+      </div>
+      <div class="h-8 w-px bg-white/10"></div>
+      <div class="text-center min-w-[85px]">
+        <span class="block text-[10px] text-slate-400">فرکانس (Hz)</span>
+        <div id="hud-freq" class="text-sm md:text-base font-bold text-emerald-400 font-mono-tech">0.00 Hz</div>
+      </div>
+      <div class="h-8 w-px bg-white/10 hidden sm:block"></div>
+      <div class="hidden sm:flex flex-col min-w-[90px]">
+        <div class="flex justify-between text-[10px] text-slate-400 mb-1">
+          <span>شدت ضربه (Vel)</span>
+          <span id="hud-vel-num" class="font-mono-tech text-amber-300">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-white/10">
+          <div id="hud-vel-bar" class="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-rose-500 transition-all duration-75" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="h-8 w-px bg-white/10 hidden md:block"></div>
+      <div class="hidden md:flex items-center gap-3 text-xs">
+        <div class="text-center">
+          <span class="block text-[10px] text-slate-400">نرخ فریم</span>
+          <span id="hud-fps" class="font-mono-tech font-bold text-slate-200">60 FPS</span>
+        </div>
+        <div class="text-center">
+          <span class="block text-[10px] text-slate-400">پلی‌فونی</span>
+          <span id="hud-polyphony" class="font-mono-tech font-bold text-indigo-300">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Quick Actions -->
+    <div class="flex items-center gap-2 pointer-events-auto">
+      <!-- Camera Start/Stop Toggle -->
+      <button id="btn-camera" class="glass-panel hover:bg-sky-500/20 active:scale-95 transition-all rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs font-semibold text-sky-300 border border-sky-400/30">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+        <span id="btn-camera-text">فعال‌سازی دوربین AR</span>
+      </button>
+
+      <!-- Sustain Pedal Toggle -->
+      <button id="btn-sustain" class="glass-panel hover:bg-amber-500/20 active:scale-95 transition-all rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs font-semibold text-slate-200 border border-white/15" title="میانبر کیبورد: کلید Space">
+        <span id="sustain-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500 transition-colors"></span>
+        <span>پدال Sustain</span>
+      </button>
+
+      <!-- Audio Recorder Button -->
+      <button id="btn-record" class="glass-panel hover:bg-rose-500/20 active:scale-95 transition-all rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs font-semibold text-rose-300 border border-rose-400/30">
+        <span id="record-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+        <span id="record-text">ضبط صدا</span>
+      </button>
+
+      <!-- Settings Drawer Toggle -->
+      <button id="btn-settings" class="glass-panel hover:bg-white/10 active:scale-95 transition-all rounded-xl p-2.5 text-slate-200" title="تنظیمات تخصصی">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Collapsible Settings Panel -->
+  <aside id="settings-panel" class="fixed top-20 left-4 z-30 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-2xl p-4 transition-all duration-300 transform translate-x-0 opacity-100">
+    <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+        <h2 class="text-sm font-bold text-white">تنظیمات سینماتیک و صدا</h2>
+      </div>
+      <button id="btn-close-settings" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg hover:bg-white/10">بستن</button>
+    </div>
+
+    <div class="space-y-3.5 text-xs">
+      <!-- Key Count / Octaves Selector -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-300 font-medium">تعداد کلیدها (وسعت کیبورد):</label>
+          <span id="lbl-octaves" class="font-mono-tech text-sky-400 font-semibold">36 Keys (3 Oct)</span>
+        </div>
+        <div class="grid grid-cols-4 gap-1.5">
+          <button data-octaves="2" class="octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10">24 (2 Oct)</button>
+          <button data-octaves="3" class="octave-btn py-1.5 rounded-lg bg-sky-500/30 text-sky-200 font-mono-tech text-[11px] border border-sky-400/50 font-bold">36 (3 Oct)</button>
+          <button data-octaves="4" class="octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10">48 (4 Oct)</button>
+          <button data-octaves="5" class="octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10">61 (5 Oct)</button>
+        </div>
+      </div>
+
+      <!-- Base Octave Shift -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-300 font-medium">اکتاو پایه شروع (Base Octave):</label>
+          <span id="lbl-base-octave" class="font-mono-tech text-sky-400">C3</span>
+        </div>
+        <input id="slider-base-octave" type="range" min="1" max="5" step="1" value="3" class="w-full" />
+      </div>
+
+      <!-- Strike Velocity Threshold (Vy) -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-300 font-medium">حساسیت ضربه عمودی ($V_y$):</label>
+          <span id="lbl-vy-thresh" class="font-mono-tech text-emerald-400">حساس (متعادل)</span>
+        </div>
+        <input id="slider-vy-thresh" type="range" min="0.002" max="0.020" step="0.001" value="0.006" class="w-full" />
+      </div>
+
+      <!-- Anti-Transit Gating Ratio -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-300 font-medium">فیلتر عبور افقی دست (Anti-Transit):</label>
+          <span id="lbl-transit" class="font-mono-tech text-amber-300">1.35x</span>
+        </div>
+        <input id="slider-transit" type="range" min="0.8" max="2.5" step="0.05" value="1.35" class="w-full" />
+      </div>
+
+      <!-- Concert Hall Reverb Mix -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-300 font-medium">طنین سالن کنسرت (Reverb):</label>
+          <span id="lbl-reverb" class="font-mono-tech text-indigo-300">35%</span>
+        </div>
+        <input id="slider-reverb" type="range" min="0" max="0.85" step="0.05" value="0.35" class="w-full" />
+      </div>
+
+      <!-- Keyboard Y-Position / Ergonomics -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-300 font-medium">ارتفاع کیبورد در تصویر:</label>
+          <span id="lbl-kb-height" class="font-mono-tech text-sky-300">پایین (ارگونومیک)</span>
+        </div>
+        <input id="slider-kb-pos" type="range" min="0.45" max="0.78" step="0.01" value="0.62" class="w-full" />
+      </div>
+
+      <!-- Download Recorded Audio Container (Hidden until recording finishes) -->
+      <div id="download-box" class="hidden pt-2 border-t border-white/10">
+        <a id="download-link" href="#" download="ar-piano-performance.webm" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 hover:opacity-95 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>دانلود فایل صوتی ضبط‌شده</span>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Floating Helper Legend (Top Right below header) -->
+  <div class="fixed top-20 right-4 z-20 glass-pill rounded-xl px-3.5 py-2 text-[11px] text-slate-300 hidden lg:flex items-center gap-4 pointer-events-none">
+    <div class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span><span>شست</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span><span>اشاره</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>وسط</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span><span>انگشتری</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span><span>کوچک</span>
+    </div>
+    <span class="text-slate-500">|</span>
+    <span class="text-sky-300">حرکت رو به پایین ($V_y > 0$) = ضربه نت | حرکت افقی = عبور بی‌صدا</span>
+  </div>
+
+  <!-- Non-blocking Toast Message Box (No alert/confirm) -->
+  <div id="toast-message" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass-panel px-5 py-3 rounded-2xl text-xs md:text-sm font-medium text-white shadow-2xl border border-sky-400/40 transition-all duration-300 opacity-0 pointer-events-none translate-y-4">
+    پیام سیستم
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * AR GRAND PIANO SIMULATOR - SINGLE-FILE ULTRA-LOW LATENCY ENGINE
+     * ============================================================================
+     * Features:
+     * 1. Dual-Hand 3D MediaPipe Tracking (60 FPS) + Mirrored AR Viewport
+     * 2. Adaptive Exponential Moving Average (EMA) Filter (Zero lag on fast strikes, jitter-free at rest)
+     * 3. Anti-Transit & Collision Gating (Ignores horizontal octave shifts, triggers on downward Vy > 0)
+     * 4. 30ms Per-Key Cooldown + Accurate Note-Off release detection
+     * 5. Polyphonic Web Audio Grand Piano Synthesizer (Multi-harmonic + Hammer transient + Velocity LPF + Convolver Reverb)
+     * 6. Built-in MediaRecorder Performance Recorder & Mouse/Touch Fallback
+     */
+
+    const NOTE_NAMES_EN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const NOTE_NAMES_FA = ['دو', 'دو دیز', 'ره', 'ره دیز', 'می', 'فا', 'فا دیز', 'سل', 'سل دیز', 'لا', 'لا دیز', 'سی'];
+    const BLACK_KEY_SEMITONES = new Set([1, 3, 6, 8, 10]);
+
+    // Fingertip landmark indices in MediaPipe Hands
+    const FINGERTIP_INDICES = [4, 8, 12, 16, 20];
+    const FINGER_COLORS = {
+      4: '#fb7185',  // Thumb - Rose
+      8: '#38bdf8',  // Index - Sky
+      12: '#34d399', // Middle - Emerald
+      16: '#fbbf24', // Ring - Amber
+      20: '#c084fc'  // Pinky - Purple
+    };
+
+    // Hand skeleton connection pairs for drawing AR bones
+    const HAND_CONNECTIONS = [
+      [0,1],[1,2],[2,3],[3,4],       // Thumb
+      [0,5],[5,6],[6,7],[7,8],       // Index
+      [0,9],[9,10],[10,11],[11,12],  // Middle
+      [0,13],[13,14],[14,15],[15,16],// Ring
+      [0,17],[17,18],[18,19],[19,20],// Pinky
+      [5,9],[9,13],[13,17],[0,17]    // Palm
+    ];
+
+    // Global Configuration State
+    const config = {
+      octaves: 3,               // Default 36 keys (3 octaves)
+      baseOctave: 3,            // Starts at C3 (MIDI 48)
+      vyStrikeThreshold: 0.006, // Minimum downward normalized velocity per frame to trigger strike
+      vyReleaseThreshold: -0.0035, // Upward velocity threshold for immediate Note-Off
+      antiTransitRatio: 1.35,   // Vy * ratio must exceed |Vx| to prevent horizontal transit triggers
+      keyCooldownMs: 30,        // 30ms anti-bounce cooldown per key
+      reverbMix: 0.35,          // Concert hall reverb wet level
+      keyboardTopRatio: 0.62,   // Vertical start of piano overlay (0.0 to 1.0)
+      sustainActive: false      // Sustain pedal state
+    };
+
+    // UI Elements
+    const videoEl = document.getElementById('webcam-video');
+    const canvas = document.getElementById('ar-canvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    let toastTimeout = null;
+    function showToast(msg, duration = 3200) {
+      const toast = document.getElementById('toast-message');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-4');
+      }, duration);
+    }
+
+    /**
+     * Standard Piano Frequency Formula: f = 440 * 2^((n - 69) / 12)
+     */
+    function midiToFreq(midiNote) {
+      return 440 * Math.pow(2, (midiNote - 69) / 12);
+    }
+
+    function getMidiNoteLabel(midiNote) {
+      const semitone = midiNote % 12;
+      const octave = Math.floor(midiNote / 12) - 1;
+      return {
+        en: `${NOTE_NAMES_EN[semitone]}${octave}`,
+        fa: NOTE_NAMES_FA[semitone],
+        isBlack: BLACK_KEY_SEMITONES.has(semitone)
+      };
+    }
+
+    class PolyphonicPianoEngine {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.dryGain = null;
+        this.wetGain = null;
+        this.convolver = null;
+        this.compressor = null;
+        this.recorderDest = null;
+        this.mediaRecorder = null;
+        this.recordedChunks = [];
+        this.isRecording = false;
+        this.activeVoices = new Map(); // midiNote -> Voice object
+        this.sustainedNotes = new Set();
+        this.hammerNoiseBuffer = null;
+      }
+
+      init() {
+        if (this.ctx) {
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          return;
+        }
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx({ latencyHint: 'interactive' });
+
+        // Dynamics Compressor to prevent clipping during rich chords
+        this.compressor = this.ctx.createDynamicsCompressor();
+        this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
+        this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
+        this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
+        this.compressor.attack.setValueAtTime(0.002, this.ctx.currentTime);
+        this.compressor.release.setValueAtTime(0.18, this.ctx.currentTime);
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
+
+        this.dryGain = this.ctx.createGain();
+        this.wetGain = this.ctx.createGain();
+        this.dryGain.gain.setValueAtTime(1.0 - config.reverbMix * 0.3, this.ctx.currentTime);
+        this.wetGain.gain.setValueAtTime(config.reverbMix, this.ctx.currentTime);
+
+        // Create procedural Concert Hall Impulse Response for ConvolverNode
+        this.convolver = this.ctx.createConvolver();
+        this.convolver.buffer = this.createConcertHallImpulse(2.4, 2.8);
+
+        // Create short woody hammer strike noise buffer
+        this.hammerNoiseBuffer = this.createHammerNoiseBuffer(0.045);
+
+        // MediaStreamDestination for recording output
+        this.recorderDest = this.ctx.createMediaStreamDestination();
+
+        // Routing: compressor -> dry/wet -> masterGain -> destination & recorderDest
+        this.compressor.connect(this.dryGain);
+        this.compressor.connect(this.convolver);
+        this.convolver.connect(this.wetGain);
+
+        this.dryGain.connect(this.masterGain);
+        this.wetGain.connect(this.masterGain);
+
+        this.masterGain.connect(this.ctx.destination);
+        this.masterGain.connect(this.recorderDest);
+      }
+
+      createConcertHallImpulse(durationSec, decayRate) {
+        const rate = this.ctx.sampleRate;
+        const length = Math.floor(rate * durationSec);
+        const impulse = this.ctx.createBuffer(2, length, rate);
+        for (let ch = 0; ch < 2; ch++) {
+          const channelData = impulse.getChannelData(ch);
+          for (let i = 0; i < length; i++) {
+            const t = i / length;
+            // Early reflections + exponential lush tail
+            const envelope = Math.pow(1 - t, decayRate);
+            channelData[i] = (Math.random() * 2 - 1) * envelope * 0.5;
+          }
+        }
+        return impulse;
+      }
+
+      createHammerNoiseBuffer(durationSec) {
+        const rate = this.ctx.sampleRate;
+        const length = Math.floor(rate * durationSec);
+        const buffer = this.ctx.createBuffer(1, length, rate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i++) {
+          const env = Math.exp(-i / (length * 0.22));
+          data[i] = (Math.random() * 2 - 1) * env;
+        }
+        return buffer;
+      }
+
+      setReverbMix(mix) {
+        config.reverbMix = mix;
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        this.wetGain.gain.setTargetAtTime(mix, now, 0.02);
+        this.dryGain.gain.setTargetAtTime(1.0 - mix * 0.25, now, 0.02);
+      }
+
+      noteOn(midiNote, velocity = 0.75) {
+        this.init();
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+
+        // Clamp velocity between 0.12 and 1.0
+        const vel = Math.max(0.12, Math.min(1.0, velocity));
+
+        // If note is already playing, smoothly re-trigger
+        if (this.activeVoices.has(midiNote)) {
+          this.forceStopVoice(midiNote, 0.025);
+        }
+
+        const now = this.ctx.currentTime;
+        const freq = midiToFreq(midiNote);
+
+        // Dynamic Low-Pass Filter controlled by strike Velocity (soft = warm, hard = bright)
+        const voiceFilter = this.ctx.createBiquadFilter();
+        voiceFilter.type = 'lowpass';
+        const minCutoff = Math.min(18000, freq * 2.2);
+        const maxCutoff = Math.min(19500, freq * (5 + vel * 12));
+        voiceFilter.frequency.setValueAtTime(maxCutoff, now);
+        // Filter mellows out naturally as string energy decays
+        voiceFilter.frequency.exponentialRampToValueAtTime(Math.max(220, minCutoff), now + 1.8);
+        voiceFilter.Q.setValueAtTime(1.1, now);
+
+        // Main voice envelope Gain
+        const voiceGain = this.ctx.createGain();
+        const peakGain = 0.32 * Math.pow(vel, 1.25);
+        voiceGain.gain.setValueAtTime(0.0001, now);
+        // Ultra-fast hammer attack (3ms)
+        voiceGain.gain.linearRampToValueAtTime(peakGain, now + 0.0035);
+        // Two-stage piano string decay (initial drop to sustain body, then long decay)
+        const decayTime = Math.max(1.2, 4.2 - (midiNote - 36) * 0.045);
+        voiceGain.gain.exponentialRampToValueAtTime(peakGain * 0.42, now + 0.22);
+        voiceGain.gain.exponentialRampToValueAtTime(0.0008, now + decayTime);
+
+        voiceFilter.connect(voiceGain);
+        voiceGain.connect(this.compressor);
+
+        // 1. Fundamental + Warm Body Oscillator (Triangle)
+        const osc1 = this.ctx.createOscillator();
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(freq, now);
+
+        // 2. Detuned Unison String Oscillator (Sine with slight chorus detune)
+        const osc2 = this.ctx.createOscillator();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(freq, now);
+        osc2.detune.setValueAtTime(3.5, now); // 3.5 cents detune for realistic string pair
+
+        // 3. Second Harmonic Overtone (Octave up, adds acoustic brilliance)
+        const osc3 = this.ctx.createOscillator();
+        osc3.type = 'sine';
+        osc3.frequency.setValueAtTime(freq * 2, now);
+        const harm2Gain = this.ctx.createGain();
+        harm2Gain.gain.setValueAtTime(0.28 * vel, now);
+        harm2Gain.gain.exponentialRampToValueAtTime(0.001, now + decayTime * 0.55);
+
+        // 4. Third & Fourth Harmonics (String metallic ring on harder strikes)
+        const osc4 = this.ctx.createOscillator();
+        osc4.type = 'sine';
+        osc4.frequency.setValueAtTime(freq * 3, now);
+        const harm3Gain = this.ctx.createGain();
+        harm3Gain.gain.setValueAtTime(0.11 * (vel * vel), now);
+        harm3Gain.gain.exponentialRampToValueAtTime(0.0005, now + decayTime * 0.35);
+
+        // 5. Felt Hammer Transient (Short Bandpass Noise Burst)
+        const hammerSource = this.ctx.createBufferSource();
+        hammerSource.buffer = this.hammerNoiseBuffer;
+        const hammerFilter = this.ctx.createBiquadFilter();
+        hammerFilter.type = 'bandpass';
+        hammerFilter.frequency.setValueAtTime(Math.min(8000, freq * 4 + 900 * vel), now);
+        hammerFilter.Q.setValueAtTime(2.0, now);
+        const hammerGain = this.ctx.createGain();
+        hammerGain.gain.setValueAtTime(0.18 * vel, now);
+
+        osc1.connect(voiceFilter);
+        osc2.connect(voiceFilter);
+        osc3.connect(harm2Gain);
+        harm2Gain.connect(voiceFilter);
+        osc4.connect(harm3Gain);
+        harm3Gain.connect(voiceFilter);
+
+        hammerSource.connect(hammerFilter);
+        hammerFilter.connect(hammerGain);
+        hammerGain.connect(voiceFilter);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc3.start(now);
+        osc4.start(now);
+        hammerSource.start(now);
+
+        const voiceObj = {
+          midiNote,
+          oscillators: [osc1, osc2, osc3, osc4, hammerSource],
+          voiceGain,
+          voiceFilter,
+          released: false,
+          cleanupTimer: setTimeout(() => {
+            this.forceStopVoice(midiNote, 0.02);
+          }, (decayTime + 0.1) * 1000)
+        };
+
+        this.activeVoices.set(midiNote, voiceObj);
+        this.sustainedNotes.delete(midiNote);
+        updatePolyphonyHUD();
+        return freq;
+      }
+
+      noteOff(midiNote) {
+        if (!this.activeVoices.has(midiNote)) return;
+        if (config.sustainActive) {
+          this.sustainedNotes.add(midiNote);
+          return;
+        }
+        this.releaseVoice(midiNote, 0.18);
+      }
+
+      releaseVoice(midiNote, releaseSec = 0.18) {
+        const voice = this.activeVoices.get(midiNote);
+        if (!voice || voice.released) return;
+        voice.released = true;
+        clearTimeout(voice.cleanupTimer);
+
+        const now = this.ctx.currentTime;
+        try {
+          voice.voiceGain.gain.cancelScheduledValues(now);
+          const currentVal = Math.max(0.0001, voice.voiceGain.gain.value);
+          voice.voiceGain.gain.setValueAtTime(currentVal, now);
+          voice.voiceGain.gain.exponentialRampToValueAtTime(0.0001, now + releaseSec);
+        } catch (e) {
+          // Ignore scheduling edge cases
+        }
+
+        setTimeout(() => {
+          this.forceStopVoice(midiNote, 0);
+        }, releaseSec * 1000 + 25);
+      }
+
+      forceStopVoice(midiNote, fadeSec = 0.015) {
+        const voice = this.activeVoices.get(midiNote);
+        if (!voice) return;
+        clearTimeout(voice.cleanupTimer);
+        this.activeVoices.delete(midiNote);
+        this.sustainedNotes.delete(midiNote);
+
+        const now = this.ctx ? this.ctx.currentTime : 0;
+        if (fadeSec > 0 && this.ctx) {
+          try {
+            voice.voiceGain.gain.cancelScheduledValues(now);
+            voice.voiceGain.gain.setValueAtTime(Math.max(0.0001, voice.voiceGain.gain.value), now);
+            voice.voiceGain.gain.linearRampToValueAtTime(0.0001, now + fadeSec);
+          } catch (e) {}
+        }
+
+        setTimeout(() => {
+          voice.oscillators.forEach(osc => {
+            try { osc.stop(); osc.disconnect(); } catch (e) {}
+          });
+          try { voice.voiceGain.disconnect(); } catch (e) {}
+          updatePolyphonyHUD();
+        }, fadeSec * 1000 + 10);
+      }
+
+      releaseSustainedNotes() {
+        for (const midiNote of this.sustainedNotes) {
+          this.releaseVoice(midiNote, 0.24);
+        }
+        this.sustainedNotes.clear();
+      }
+
+      toggleRecording() {
+        this.init();
+        if (!this.isRecording) {
+          this.recordedChunks = [];
+          let options = { mimeType: 'audio/webm' };
+          if (!MediaRecorder.isTypeSupported('audio/webm')) {
+            options = MediaRecorder.isTypeSupported('audio/mp4') ? { mimeType: 'audio/mp4' } : {};
+          }
+          try {
+            this.mediaRecorder = new MediaRecorder(this.recorderDest.stream, options);
+          } catch (err) {
+            this.mediaRecorder = new MediaRecorder(this.recorderDest.stream);
+          }
+
+          this.mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              this.recordedChunks.push(e.data);
+            }
+          };
+
+          this.mediaRecorder.onstop = () => {
+            const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            const downloadBox = document.getElementById('download-box');
+            const downloadLink = document.getElementById('download-link');
+            downloadLink.href = url;
+            const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '-');
+            downloadLink.download = `ar-piano-${timestamp}.webm`;
+            downloadBox.classList.remove('hidden');
+            // Open settings panel automatically so user sees download button
+            document.getElementById('settings-panel').classList.remove('-translate-x-[120%]', 'opacity-0');
+            showToast('ضبط به پایان رسید! لینک دانلود در پنل تنظیمات آماده است.');
+          };
+
+          this.mediaRecorder.start();
+          this.isRecording = true;
+          showToast('ضبط اجرای پیانو آغاز شد...');
+          return true;
+        } else {
+          if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+            this.mediaRecorder.stop();
+          }
+          this.isRecording = false;
+          return false;
+        }
+      }
+    }
+
+    const audioEngine = new PolyphonicPianoEngine();
+
+    let pianoKeys = [];     // All keys
+    let whiteKeys = [];     // White keys for base layer rendering
+    let blackKeys = [];     // Black keys for top priority hit-testing & rendering
+    let visualRipples = []; // Strike visual bursts
+
+    function buildPianoKeyboard() {
+      const startMidi = (config.baseOctave + 1) * 12; // e.g., C3 = 48
+      const totalKeys = config.octaves * 12;
+      const oldPressed = new Map();
+
+      // Release any currently active voices before rebuilding
+      pianoKeys.forEach(k => {
+        if (k.pressed) audioEngine.noteOff(k.midi);
+      });
+
+      pianoKeys = [];
+      whiteKeys = [];
+      blackKeys = [];
+
+      for (let i = 0; i < totalKeys; i++) {
+        const midi = startMidi + i;
+        const info = getMidiNoteLabel(midi);
+        const keyObj = {
+          midi,
+          labelEn: info.en,
+          labelFa: info.fa,
+          freq: midiToFreq(midi),
+          isBlack: info.isBlack,
+          x: 0,
+          y: 0,
+          w: 0,
+          h: 0,
+          pressed: false,
+          hovered: false,
+          pressDepth: 0,      // 0.0 to 1.0 animated depression
+          velocity: 0,        // Last strike velocity
+          lastTriggerTime: 0, // For 30ms cooldown
+          activeFingerIds: new Set() // Which fingertip IDs are holding this key
+        };
+        pianoKeys.push(keyObj);
+        if (info.isBlack) {
+          blackKeys.push(keyObj);
+        } else {
+          whiteKeys.push(keyObj);
+        }
+      }
+
+      layoutPianoGeometry();
+    }
+
+    function layoutPianoGeometry() {
+      const W = canvas.width;
+      const H = canvas.height;
+      if (W === 0 || H === 0 || whiteKeys.length === 0) return;
+
+      const marginX = Math.max(16, W * 0.035);
+      const totalWidth = W - marginX * 2;
+      const kbTop = H * config.keyboardTopRatio;
+      const kbHeight = Math.min(H - kbTop - 18, H * 0.34);
+
+      const whiteKeyWidth = totalWidth / whiteKeys.length;
+      const blackKeyWidth = whiteKeyWidth * 0.62;
+      const blackKeyHeight = kbHeight * 0.60;
+
+      // Position White Keys sequentially
+      let currentWhiteIdx = 0;
+      for (let i = 0; i < pianoKeys.length; i++) {
+        const key = pianoKeys[i];
+        if (!key.isBlack) {
+          key.x = marginX + currentWhiteIdx * whiteKeyWidth;
+          key.y = kbTop;
+          key.w = whiteKeyWidth;
+          key.h = kbHeight;
+          currentWhiteIdx++;
+        }
+      }
+
+      // Position Black Keys accurately between adjacent white keys
+      let whiteCounter = 0;
+      for (let i = 0; i < pianoKeys.length; i++) {
+        const key = pianoKeys[i];
+        if (!key.isBlack) {
+          whiteCounter++;
+        } else {
+          // Black key sits on the boundary between (whiteCounter - 1) and (whiteCounter)
+          const centerX = marginX + whiteCounter * whiteKeyWidth;
+          key.x = centerX - blackKeyWidth / 2;
+          key.y = kbTop;
+          key.w = blackKeyWidth;
+          key.h = blackKeyHeight;
+        }
+      }
+    }
+
+    /**
+     * Adaptive EMA Smoother & Finger Kinematics State
+     * - When finger speed is very low (stationary jitter), alpha is small (~0.22) to stabilize.
+     * - When finger accelerates rapidly (strike or fast movement), alpha scales up toward 0.92
+     *   for ultra-low latency response.
+     */
+    class HandKinematicsTracker {
+      constructor() {
+        // Map of handIndex_landmarkIndex -> smoothed state
+        this.landmarksState = new Map();
+        // Map of fingerId ("H0_8", etc.) -> active key reference
+        this.fingerActiveKey = new Map();
+      }
+
+      resetMissingHands(detectedHandCount) {
+        if (detectedHandCount === 0) {
+          // Release all finger-held keys if hands leave frame
+          for (const [fingerId, key] of this.fingerActiveKey.entries()) {
+            this.releaseFingerFromKey(fingerId, key);
+          }
+          this.fingerActiveKey.clear();
+          this.landmarksState.clear();
+        } else if (detectedHandCount === 1) {
+          // Clear second hand ("H1_*") if only 1 hand remains
+          for (const [fingerId, key] of this.fingerActiveKey.entries()) {
+            if (fingerId.startsWith('H1_')) {
+              this.releaseFingerFromKey(fingerId, key);
+              this.fingerActiveKey.delete(fingerId);
+            }
+          }
+        }
+      }
+
+      updateHandLandmarks(handIdx, rawLandmarks, dtMs) {
+        const smoothed = [];
+        const dtNorm = Math.max(0.5, Math.min(2.5, dtMs / 16.67));
+
+        for (let i = 0; i < rawLandmarks.length; i++) {
+          const id = `H${handIdx}_${i}`;
+          // Mirror X coordinate so it matches mirrored webcam display
+          const rawX = 1.0 - rawLandmarks[i].x;
+          const rawY = rawLandmarks[i].y;
+          const rawZ = rawLandmarks[i].z;
+
+          if (!this.landmarksState.has(id)) {
+            this.landmarksState.set(id, {
+              x: rawX, y: rawY, z: rawZ,
+              vx: 0, vy: 0, vz: 0,
+              prevVy: 0
+            });
+          }
+
+          const st = this.landmarksState.get(id);
+          const dx = rawX - st.x;
+          const dy = rawY - st.y;
+          const dz = rawZ - st.z;
+          const instSpeed = Math.hypot(dx, dy);
+
+          // Adaptive EMA coefficient:
+          // Low speed (<0.003) -> alpha ~ 0.25 (kills webcam micro-jitter)
+          // High speed (>0.025) -> alpha ~ 0.94 (instantaneous response)
+          const speedRatio = Math.min(1.0, instSpeed / 0.024);
+          const alpha = 0.24 + speedRatio * 0.70;
+
+          const newX = st.x + alpha * dx;
+          const newY = st.y + alpha * dy;
+          const newZ = st.z + alpha * dz;
+
+          st.prevVy = st.vy;
+          st.vx = (newX - st.x) / dtNorm;
+          st.vy = (newY - st.y) / dtNorm;
+          st.vz = (newZ - st.z) / dtNorm;
+
+          st.x = newX;
+          st.y = newY;
+          st.z = newZ;
+
+          smoothed.push({
+            x: newX,
+            y: newY,
+            z: newZ,
+            vx: st.vx,
+            vy: st.vy,
+            vz: st.vz,
+            prevVy: st.prevVy
+          });
+        }
+
+        return smoothed;
+      }
+
+      processFingertips(handIdx, smoothedLandmarks, nowMs) {
+        const W = canvas.width;
+        const H = canvas.height;
+
+        for (const tipIdx of FINGERTIP_INDICES) {
+          const fingerId = `H${handIdx}_${tipIdx}`;
+          const pt = smoothedLandmarks[tipIdx];
+          const px = pt.x * W;
+          const py = pt.y * H;
+
+          // Find which key (if any) the fingertip is currently inside
+          // Check Black keys FIRST because they sit on top of White keys
+          let hitKey = null;
+          for (let i = 0; i < blackKeys.length; i++) {
+            const k = blackKeys[i];
+            if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) {
+              hitKey = k;
+              break;
+            }
+          }
+          if (!hitKey) {
+            for (let i = 0; i < whiteKeys.length; i++) {
+              const k = whiteKeys[i];
+              if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) {
+                hitKey = k;
+                break;
+              }
+            }
+          }
+
+          if (hitKey) {
+            hitKey.hovered = true;
+          }
+
+          const currentlyHeldKey = this.fingerActiveKey.get(fingerId);
+
+          // 1. Check for Note-Off (Release) if this finger is holding a key
+          if (currentlyHeldKey) {
+            const exitedKeyBounds = (hitKey !== currentlyHeldKey);
+            const liftedUpward = (pt.vy < config.vyReleaseThreshold);
+
+            if (exitedKeyBounds || liftedUpward) {
+              this.releaseFingerFromKey(fingerId, currentlyHeldKey);
+              this.fingerActiveKey.delete(fingerId);
+            }
+          }
+
+          // 2. Check for Note-On (Strike) with Anti-Transit Gating & Cooldown
+          if (hitKey && !this.fingerActiveKey.has(fingerId)) {
+            const absVx = Math.abs(pt.vx);
+            const vy = pt.vy; // Positive vy = moving downward into the keys
+            const vz = pt.vz; // Negative vz = pushing forward toward screen/camera
+
+            // Anti-Transit Gate:
+            // When moving horizontally across octaves, |Vx| is large compared to Vy.
+            // We require downward velocity Vy > threshold AND Vy * ratio > |Vx|
+            const isDownwardStrike = (vy >= config.vyStrikeThreshold) && ((vy * config.antiTransitRatio) > absVx);
+
+            // Also support deliberate Z-push strike when hovering steady inside the key
+            const isDepthStrike = (vz < -0.012 && vy > 0.0015 && absVx < 0.008);
+
+            // Cooldown check (30ms per key)
+            const cooldownPassed = (nowMs - hitKey.lastTriggerTime) >= config.keyCooldownMs;
+
+            if ((isDownwardStrike || isDepthStrike) && cooldownPassed) {
+              // Map velocity to expressive range [0.20 .. 1.0]
+              const rawStrength = Math.max(vy * 38, Math.abs(vz) * 18);
+              const strikeVelocity = Math.max(0.22, Math.min(1.0, rawStrength));
+
+              this.triggerKeyPress(fingerId, hitKey, strikeVelocity, px, py, nowMs, FINGER_COLORS[tipIdx]);
+            }
+          }
+        }
+      }
+
+      triggerKeyPress(fingerId, key, velocity, px, py, nowMs, color) {
+        key.lastTriggerTime = nowMs;
+        key.activeFingerIds.add(fingerId);
+        this.fingerActiveKey.set(fingerId, key);
+
+        if (!key.pressed) {
+          key.pressed = true;
+          key.velocity = velocity;
+          key.pressDepth = 1.0;
+          audioEngine.noteOn(key.midi, velocity);
+          updateLiveNoteHUD(key, velocity);
+
+          // Spawn visual AR ripple at fingertip impact point
+          visualRipples.push({
+            x: px,
+            y: py,
+            radius: 6,
+            maxRadius: 34 + velocity * 28,
+            alpha: 0.95,
+            color: color || '#38bdf8'
+          });
+        }
+      }
+
+      releaseFingerFromKey(fingerId, key) {
+        if (!key) return;
+        key.activeFingerIds.delete(fingerId);
+        if (key.activeFingerIds.size === 0 && key.pressed) {
+          key.pressed = false;
+          audioEngine.noteOff(key.midi);
+        }
+      }
+    }
+
+    const kinematics = new HandKinematicsTracker();
+
+    function updateLiveNoteHUD(key, velocity) {
+      const noteEl = document.getElementById('hud-note-name');
+      const freqEl = document.getElementById('hud-freq');
+      const velNumEl = document.getElementById('hud-vel-num');
+      const velBarEl = document.getElementById('hud-vel-bar');
+
+      noteEl.textContent = `${key.labelEn} (${key.labelFa})`;
+      freqEl.textContent = `${key.freq.toFixed(2)} Hz`;
+
+      const pct = Math.round(velocity * 100);
+      velNumEl.textContent = `${pct}%`;
+      velBarEl.style.width = `${pct}%`;
+    }
+
+    function updatePolyphonyHUD() {
+      const polyEl = document.getElementById('hud-polyphony');
+      if (polyEl) {
+        polyEl.textContent = audioEngine.activeVoices.size;
+      }
+    }
+
+    function renderPianoOverlay(ctx) {
+      const W = canvas.width;
+      const H = canvas.height;
+      if (whiteKeys.length === 0) return;
+
+      const firstKey = whiteKeys[0];
+      const lastKey = whiteKeys[whiteKeys.length - 1];
+      const kbX = firstKey.x;
+      const kbY = firstKey.y;
+      const kbW = (lastKey.x + lastKey.w) - firstKey.x;
+      const kbH = firstKey.h;
+
+      ctx.save();
+
+      // Top Acoustic Piano Wood/Carbon Header Bar above keys
+      const headerGrad = ctx.createLinearGradient(kbX, kbY - 18, kbX, kbY);
+      headerGrad.addColorStop(0, 'rgba(15, 23, 42, 0.92)');
+      headerGrad.addColorStop(1, 'rgba(30, 41, 59, 0.95)');
+      ctx.fillStyle = headerGrad;
+      ctx.beginPath();
+      ctx.roundRect(kbX - 6, kbY - 18, kbW + 12, 18, [10, 10, 0, 0]);
+      ctx.fill();
+
+      // Subtle red felt strip along the top of the keys (classic grand piano detail)
+      ctx.fillStyle = 'rgba(225, 29, 72, 0.85)';
+      ctx.fillRect(kbX, kbY - 3, kbW, 3);
+
+      // 1. Render White Keys
+      for (let i = 0; i < whiteKeys.length; i++) {
+        const k = whiteKeys[i];
+        // Smooth physical key return animation
+        if (k.pressed) {
+          k.pressDepth = Math.min(1.0, k.pressDepth + 0.35);
+        } else {
+          k.pressDepth = Math.max(0.0, k.pressDepth - 0.18);
+        }
+
+        const pressOffsetY = k.pressDepth * 7;
+        const kx = k.x + 1;
+        const ky = k.y + pressOffsetY;
+        const kw = k.w - 2;
+        const kh = k.h - pressOffsetY;
+
+        // Key surface gradient
+        const grad = ctx.createLinearGradient(kx, ky, kx, ky + kh);
+        if (k.pressed) {
+          grad.addColorStop(0, 'rgba(56, 189, 248, 0.85)');
+          grad.addColorStop(0.5, 'rgba(14, 165, 233, 0.78)');
+          grad.addColorStop(1, 'rgba(2, 132, 199, 0.90)');
+        } else if (k.hovered) {
+          grad.addColorStop(0, 'rgba(241, 245, 249, 0.88)');
+          grad.addColorStop(1, 'rgba(186, 230, 253, 0.85)');
+        } else {
+          grad.addColorStop(0, 'rgba(255, 255, 255, 0.78)');
+          grad.addColorStop(0.85, 'rgba(241, 245, 249, 0.82)');
+          grad.addColorStop(1, 'rgba(203, 213, 225, 0.88)');
+        }
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(kx, ky, kw, kh, [0, 0, 8, 8]);
+        ctx.fill();
+
+        // 3D Bottom Lip of White Key
+        ctx.fillStyle = k.pressed ? 'rgba(3, 105, 161, 0.95)' : 'rgba(148, 163, 184, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(kx, ky + kh - 8, kw, 8, [0, 0, 8, 8]);
+        ctx.fill();
+
+        // Border stroke
+        ctx.strokeStyle = k.pressed ? '#38bdf8' : 'rgba(15, 23, 42, 0.45)';
+        ctx.lineWidth = k.pressed ? 2 : 1;
+        ctx.stroke();
+
+        // Note Label at the bottom of white keys (Always show C notes or all notes if wide enough)
+        if (kw > 22 || k.labelEn.startsWith('C')) {
+          ctx.fillStyle = k.pressed ? '#ffffff' : (k.labelEn.startsWith('C') ? '#0284c7' : '#334155');
+          ctx.font = `${k.labelEn.startsWith('C') ? '700' : '600'} ${Math.min(12, Math.max(9, kw * 0.32))}px "JetBrains Mono", monospace`;
+          ctx.textAlign = 'center';
+          ctx.fillText(k.labelEn, kx + kw / 2, ky + kh - 14);
+        }
+      }
+
+      // 2. Render Black Keys on top
+      for (let i = 0; i < blackKeys.length; i++) {
+        const k = blackKeys[i];
+        if (k.pressed) {
+          k.pressDepth = Math.min(1.0, k.pressDepth + 0.35);
+        } else {
+          k.pressDepth = Math.max(0.0, k.pressDepth - 0.18);
+        }
+
+        const pressOffsetY = k.pressDepth * 5;
+        const kx = k.x;
+        const ky = k.y + pressOffsetY;
+        const kw = k.w;
+        const kh = k.h - pressOffsetY;
+
+        // Shadow underneath black key
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.roundRect(kx + 2, ky + 4, kw, kh, [0, 0, 6, 6]);
+        ctx.fill();
+
+        const bGrad = ctx.createLinearGradient(kx, ky, kx, ky + kh);
+        if (k.pressed) {
+          bGrad.addColorStop(0, '#f43f5e');
+          bGrad.addColorStop(1, '#be123c');
+        } else if (k.hovered) {
+          bGrad.addColorStop(0, '#334155');
+          bGrad.addColorStop(1, '#0f172a');
+        } else {
+          bGrad.addColorStop(0, 'rgba(30, 41, 59, 0.96)');
+          bGrad.addColorStop(0.85, 'rgba(15, 23, 42, 0.98)');
+          bGrad.addColorStop(1, 'rgba(2, 6, 23, 0.99)');
+        }
+
+        ctx.fillStyle = bGrad;
+        ctx.beginPath();
+        ctx.roundRect(kx, ky, kw, kh, [0, 0, 6, 6]);
+        ctx.fill();
+
+        // Inner glossy highlight on black key
+        ctx.strokeStyle = k.pressed ? '#fda4af' : 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(kx + 2, ky + 1, kw - 4, kh - 7);
+      }
+
+      ctx.restore();
+    }
+
+    function renderHandsAndRipples(ctx, allSmoothedHands) {
+      const W = canvas.width;
+      const H = canvas.height;
+
+      ctx.save();
+
+      // Render expanding strike ripples
+      for (let i = visualRipples.length - 1; i >= 0; i--) {
+        const r = visualRipples[i];
+        r.radius += 2.6;
+        r.alpha -= 0.045;
+        if (r.alpha <= 0) {
+          visualRipples.splice(i, 1);
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = r.color;
+        ctx.globalAlpha = r.alpha;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1.0;
+
+      // Render each tracked hand skeleton
+      for (let h = 0; h < allSmoothedHands.length; h++) {
+        const hand = allSmoothedHands[h];
+
+        // Draw bones
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+        for (const [a, b] of HAND_CONNECTIONS) {
+          const ptA = hand[a];
+          const ptB = hand[b];
+          ctx.beginPath();
+          ctx.moveTo(ptA.x * W, ptA.y * H);
+          ctx.lineTo(ptB.x * W, ptB.y * H);
+          ctx.stroke();
+        }
+
+        // Draw joints
+        for (let i = 0; i < hand.length; i++) {
+          const pt = hand[i];
+          const x = pt.x * W;
+          const y = pt.y * H;
+          const isTip = FINGERTIP_INDICES.includes(i);
+
+          if (!isTip) {
+            ctx.fillStyle = 'rgba(248, 250, 252, 0.8)';
+            ctx.beginPath();
+            ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // Fingertip glowing AR target ring + velocity vector indicator
+            const color = FINGER_COLORS[i];
+            const fingerId = `H${h}_${i}`;
+            const isPressing = kinematics.fingerActiveKey.has(fingerId);
+            const radius = isPressing ? 12 : 8;
+
+            // Outer glow
+            ctx.beginPath();
+            ctx.arc(x, y, radius + 5, 0, Math.PI * 2);
+            ctx.fillStyle = isPressing ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.15)';
+            ctx.fill();
+
+            // Core fingertip orb
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = isPressing ? '#ffffff' : color;
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+
+            // Draw real-time velocity vector tail so user sees Anti-Transit vs Downward Strike
+            const vxPx = pt.vx * W * 2.2;
+            const vyPx = pt.vy * H * 2.2;
+            if (Math.hypot(vxPx, vyPx) > 3) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x + vxPx, y + vyPx);
+              ctx.strokeStyle = (pt.vy > config.vyStrikeThreshold) ? '#34d399' : '#f43f5e';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    let handsDetector = null;
+    let cameraInstance = null;
+    let cameraActive = false;
+    let latestHandsResults = null;
+    let lastFrameTime = performance.now();
+    let fpsCounter = 60;
+
+    async function initMediaPipeHands() {
+      if (handsDetector) return;
+
+      handsDetector = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+
+      handsDetector.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.65,
+        minTrackingConfidence: 0.65
+      });
+
+      handsDetector.onResults((results) => {
+        latestHandsResults = results;
+      });
+    }
+
+    async function toggleWebcamAR() {
+      const btnText = document.getElementById('btn-camera-text');
+      const statusText = document.getElementById('tracking-status-text');
+      const statusLed = document.getElementById('status-led');
+
+      audioEngine.init();
+
+      if (cameraActive) {
+        if (cameraInstance) {
+          await cameraInstance.stop();
+        }
+        cameraActive = false;
+        latestHandsResults = null;
+        kinematics.resetMissingHands(0);
+        btnText.textContent = 'فعال‌سازی دوربین AR';
+        statusText.textContent = 'دوربین متوقف شد (حالت لمس/ماوس فعال است)';
+        statusLed.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 ring-2 ring-slate-900';
+        return;
+      }
+
+      try {
+        btnText.textContent = 'در حال اتصال...';
+        statusText.textContent = 'در حال بارگذاری مدل سه‌بعدی دست...';
+        await initMediaPipeHands();
+
+        cameraInstance = new Camera(videoEl, {
+          onFrame: async () => {
+            if (handsDetector && cameraActive) {
+              await handsDetector.send({ image: videoEl });
+            }
+          },
+          width: 1280,
+          height: 720,
+          facingMode: 'user'
+        });
+
+        await cameraInstance.start();
+        cameraActive = true;
+        btnText.textContent = 'توقف دوربین AR';
+        statusText.textContent = 'ردیابی دو دست فعال است (۶۰ فریم بر ثانیه)';
+        statusLed.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-slate-900 animate-pulse';
+        showToast('دوربین واقعیت افزوده فعال شد! دستان خود را روبروی کلیدها بگیرید.');
+      } catch (err) {
+        cameraActive = false;
+        btnText.textContent = 'فعال‌سازی دوربین AR';
+        statusText.textContent = 'عدم دسترسی به وب‌کم — حالت لمس و ماوس فعال است';
+        statusLed.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-500 ring-2 ring-slate-900';
+        showToast('دسترسی به وب‌کم امکان‌پذیر نشد. می‌توانید با ماوس یا لمس صفحه بنوازید.');
+      }
+    }
+
+    function renderARLoop(nowMs) {
+      const dtMs = Math.max(1, nowMs - lastFrameTime);
+      lastFrameTime = nowMs;
+
+      // Smooth FPS telemetry
+      const currentFps = Math.min(60, Math.round(1000 / dtMs));
+      fpsCounter = Math.round(fpsCounter * 0.9 + currentFps * 0.1);
+      const fpsEl = document.getElementById('hud-fps');
+      if (fpsEl) fpsEl.textContent = `${fpsCounter} FPS`;
+
+      const W = canvas.width;
+      const H = canvas.height;
+
+      // Clear hover states before frame evaluation
+      for (let i = 0; i < pianoKeys.length; i++) {
+        pianoKeys[i].hovered = false;
+      }
+
+      // 1. Draw Mirrored Webcam Feed or Studio Dark Backdrop
+      if (cameraActive && videoEl.readyState >= 2) {
+        ctx.save();
+        ctx.translate(W, 0);
+        ctx.scale(-1, 1);
+        // Cover viewport proportionally
+        const vidW = videoEl.videoWidth || 1280;
+        const vidH = videoEl.videoHeight || 720;
+        const scale = Math.max(W / vidW, H / vidH);
+        const drawW = vidW * scale;
+        const drawH = vidH * scale;
+        const offsetX = (W - drawW) / 2;
+        const offsetY = (H - drawH) / 2;
+        ctx.drawImage(videoEl, offsetX, offsetY, drawW, drawH);
+        ctx.restore();
+
+        // Subtle atmospheric vignette so AR HUD & Piano pop visually
+        const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.75);
+        vig.addColorStop(0, 'rgba(5, 8, 17, 0.08)');
+        vig.addColorStop(1, 'rgba(5, 8, 17, 0.55)');
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, W, H);
+      } else {
+        // Sleek ambient studio background when camera is off
+        const bgGrad = ctx.createRadialGradient(W * 0.5, H * 0.35, 10, W * 0.5, H * 0.5, W * 0.8);
+        bgGrad.addColorStop(0, '#0f172a');
+        bgGrad.addColorStop(1, '#020617');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Subtle perspective stage grid lines
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.06)';
+        ctx.lineWidth = 1;
+        const gridStep = 60;
+        for (let x = 0; x < W; x += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, H);
+          ctx.stroke();
+        }
+        for (let y = 0; y < H; y += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(W, y);
+          ctx.stroke();
+        }
+      }
+
+      // 2. Process 3D Hand Kinematics if available
+      const allSmoothedHands = [];
+      if (cameraActive && latestHandsResults && latestHandsResults.multiHandLandmarks) {
+        const rawHands = latestHandsResults.multiHandLandmarks;
+        kinematics.resetMissingHands(rawHands.length);
+
+        for (let h = 0; h < rawHands.length; h++) {
+          const smoothedHand = kinematics.updateHandLandmarks(h, rawHands[h], dtMs);
+          kinematics.processFingertips(h, smoothedHand, nowMs);
+          allSmoothedHands.push(smoothedHand);
+        }
+      }
+
+      // 3. Render AR Piano Keyboard Overlay
+      renderPianoOverlay(ctx);
+
+      // 4. Render 3D Hand Skeletons & Velocity Vectors on top of Piano
+      renderHandsAndRipples(ctx, allSmoothedHands);
+
+      requestAnimationFrame(renderARLoop);
+    }
+
+    let activePointers = new Map(); // pointerId -> key
+
+    function findKeyAtPoint(px, py) {
+      for (let i = 0; i < blackKeys.length; i++) {
+        const k = blackKeys[i];
+        if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) return k;
+      }
+      for (let i = 0; i < whiteKeys.length; i++) {
+        const k = whiteKeys[i];
+        if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) return k;
+      }
+      return null;
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      audioEngine.init();
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const hitKey = findKeyAtPoint(px, py);
+      if (hitKey) {
+        const fingerId = `PTR_${e.pointerId}`;
+        // Calculate velocity from vertical position on the key (lower on key = higher velocity)
+        const relY = (py - hitKey.y) / hitKey.h;
+        const vel = Math.max(0.35, Math.min(1.0, 0.4 + relY * 0.6));
+        kinematics.triggerKeyPress(fingerId, hitKey, vel, px, py, performance.now(), '#38bdf8');
+        activePointers.set(e.pointerId, hitKey);
+      }
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const hitKey = findKeyAtPoint(px, py);
+      const prevKey = activePointers.get(e.pointerId);
+      const fingerId = `PTR_${e.pointerId}`;
+
+      if (hitKey !== prevKey) {
+        if (prevKey) kinematics.releaseFingerFromKey(fingerId, prevKey);
+        if (hitKey) {
+          kinematics.triggerKeyPress(fingerId, hitKey, 0.72, px, py, performance.now(), '#38bdf8');
+          activePointers.set(e.pointerId, hitKey);
+        } else {
+          activePointers.delete(e.pointerId);
+        }
+      }
+    });
+
+    function handlePointerUp(e) {
+      if (activePointers.has(e.pointerId)) {
+        const prevKey = activePointers.get(e.pointerId);
+        const fingerId = `PTR_${e.pointerId}`;
+        kinematics.releaseFingerFromKey(fingerId, prevKey);
+        activePointers.delete(e.pointerId);
+      }
+    }
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      layoutPianoGeometry();
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Camera button
+    document.getElementById('btn-camera').addEventListener('click', toggleWebcamAR);
+
+    // Sustain Pedal button & Spacebar shortcut
+    const btnSustain = document.getElementById('btn-sustain');
+    const sustainIndicator = document.getElementById('sustain-indicator');
+
+    function setSustainState(active) {
+      config.sustainActive = active;
+      if (active) {
+        sustainIndicator.classList.replace('bg-slate-500', 'bg-amber-400');
+        sustainIndicator.classList.add('shadow-[0_0_10px_#fbbf24]');
+        btnSustain.classList.add('border-amber-400/50', 'bg-amber-500/15');
+      } else {
+        sustainIndicator.classList.replace('bg-amber-400', 'bg-slate-500');
+        sustainIndicator.classList.remove('shadow-[0_0_10px_#fbbf24]');
+        btnSustain.classList.remove('border-amber-400/50', 'bg-amber-500/15');
+        audioEngine.releaseSustainedNotes();
+      }
+    }
+
+    btnSustain.addEventListener('click', () => {
+      setSustainState(!config.sustainActive);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault();
+        setSustainState(true);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setSustainState(false);
+      }
+    });
+
+    // Audio Recorder button
+    document.getElementById('btn-record').addEventListener('click', () => {
+      const isRec = audioEngine.toggleRecording();
+      const recDot = document.getElementById('record-dot');
+      const recText = document.getElementById('record-text');
+      if (isRec) {
+        recDot.classList.add('recording-dot');
+        recText.textContent = 'توقف ضبط';
+      } else {
+        recDot.classList.remove('recording-dot');
+        recText.textContent = 'ضبط صدا';
+      }
+    });
+
+    // Settings drawer toggle
+    const settingsPanel = document.getElementById('settings-panel');
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      settingsPanel.classList.toggle('-translate-x-[120%]');
+      settingsPanel.classList.toggle('opacity-0');
+    });
+    document.getElementById('btn-close-settings').addEventListener('click', () => {
+      settingsPanel.classList.add('-translate-x-[120%]', 'opacity-0');
+    });
+
+    // Octave buttons
+    const octaveBtns = document.querySelectorAll('.octave-btn');
+    octaveBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const oct = parseInt(btn.getAttribute('data-octaves'), 10);
+        config.octaves = oct;
+        // Adjust base octave automatically if 5 octaves is selected so it stays within MIDI range
+        if (config.baseOctave + config.octaves > 7) {
+          config.baseOctave = 7 - config.octaves;
+          document.getElementById('slider-base-octave').value = config.baseOctave;
+          document.getElementById('lbl-base-octave').textContent = `C${config.baseOctave}`;
+        }
+        octaveBtns.forEach(b => {
+          b.className = 'octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10';
+        });
+        btn.className = 'octave-btn py-1.5 rounded-lg bg-sky-500/30 text-sky-200 font-mono-tech text-[11px] border border-sky-400/50 font-bold';
+        const keyCount = oct === 5 ? 61 : oct * 12;
+        document.getElementById('lbl-octaves').textContent = `${keyCount} Keys (${oct} Oct)`;
+        buildPianoKeyboard();
+      });
+    });
+
+    // Sliders
+    document.getElementById('slider-base-octave').addEventListener('input', (e) => {
+      config.baseOctave = parseInt(e.target.value, 10);
+      document.getElementById('lbl-base-octave').textContent = `C${config.baseOctave}`;
+      buildPianoKeyboard();
+    });
+
+    document.getElementById('slider-vy-thresh').addEventListener('input', (e) => {
+      config.vyStrikeThreshold = parseFloat(e.target.value);
+      const val = config.vyStrikeThreshold;
+      const lbl = document.getElementById('lbl-vy-thresh');
+      if (val <= 0.004) lbl.textContent = 'بسیار حساس';
+      else if (val <= 0.008) lbl.textContent = 'حساس (متعادل)';
+      else lbl.textContent = 'ضربه محکم';
+    });
+
+    document.getElementById('slider-transit').addEventListener('input', (e) => {
+      config.antiTransitRatio = parseFloat(e.target.value);
+      document.getElementById('lbl-transit').textContent = `${config.antiTransitRatio.toFixed(2)}x`;
+    });
+
+    document.getElementById('slider-reverb').addEventListener('input', (e) => {
+      const mix = parseFloat(e.target.value);
+      audioEngine.setReverbMix(mix);
+      document.getElementById('lbl-reverb').textContent = `${Math.round(mix * 100)}%`;
+    });
+
+    document.getElementById('slider-kb-pos').addEventListener('input', (e) => {
+      config.keyboardTopRatio = parseFloat(e.target.value);
+      layoutPianoGeometry();
+    });
+
+    window.onload = function () {
+      resizeCanvas();
+      buildPianoKeyboard();
+      requestAnimationFrame(renderARLoop);
+      // Automatically attempt to start AR webcam for seamless experience
+      toggleWebcamAR();
+    };
+  </script>
+</body>
+</html>
