@@ -136,6 +136,7 @@
             display: block;
             z-index: 3;
             cursor: none;
+            touch-action: none;
         }
     </style>
 </head>
@@ -165,9 +166,9 @@
             <div>
                 <h1 class="text-sm md:text-base font-bold text-amber-200 tracking-tight flex items-center gap-2">
                     <span>شبیه‌ساز سه‌بعدی سنتور ۹ خرک</span>
-                    <span id="camStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 border border-amber-600/40">موتور سه‌بعدی WebGL + تشخیص مشت</span>
+                    <span id="camStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 border border-amber-600/40">موتور سه‌بعدی WebGL + تشخیص دقیق ضربه</span>
                 </h1>
-                <p class="text-[11px] text-amber-100/65 hidden xl:block">تشخیص خودکار مشت برای گرفتن مضراب سه‌بعدی (6-DOF) + تفکیک فیزیکی حرکت دست از ضربه شلاقی مچ</p>
+                <p class="text-[11px] text-amber-100/65 hidden xl:block">تشخیص خودکار مشت (6-DOF) + قفل هدف در لحظه عبور از سیم و جلوگیری کامل از هنگ کردن</p>
             </div>
         </div>
 
@@ -400,30 +401,30 @@
                 <div>
                     <div class="flex justify-between text-[11px] mb-0.5">
                         <span>حساسیت تشخیص مشت شدن دست (Fist Grip Threshold):</span>
-                        <span id="fistThreshLabel" class="font-mono text-emerald-300">50%</span>
+                        <span id="fistThreshLabel" class="font-mono text-emerald-300">45%</span>
                     </div>
-                    <input id="fistThreshSlider" type="range" min="30" max="75" value="50" class="w-full">
+                    <input id="fistThreshSlider" type="range" min="25" max="75" value="45" class="w-full">
                 </div>
                 <div>
                     <div class="flex justify-between text-[11px] mb-0.5">
                         <span>حداقل سرعت شلاقی مچ برای ضربه ($V_{whip}$):</span>
-                        <span id="strikeThreshLabel" class="font-mono text-amber-300">0.58 px/ms</span>
+                        <span id="strikeThreshLabel" class="font-mono text-amber-300">0.46 px/ms</span>
                     </div>
-                    <input id="strikeThreshSlider" type="range" min="28" max="125" value="58" class="w-full">
+                    <input id="strikeThreshSlider" type="range" min="22" max="120" value="46" class="w-full">
                 </div>
                 <div>
                     <div class="flex justify-between text-[11px] mb-0.5">
-                        <span>حساسیت قفل حرکت عادی دست (Travel Lock):</span>
-                        <span id="travelLockLabel" class="font-mono text-amber-300">0.68 px/ms</span>
+                        <span>حساسیت قفل حرکت افقی دست (Travel Lock):</span>
+                        <span id="travelLockLabel" class="font-mono text-amber-300">0.72 px/ms</span>
                     </div>
-                    <input id="travelLockSlider" type="range" min="35" max="140" value="68" class="w-full">
+                    <input id="travelLockSlider" type="range" min="35" max="140" value="72" class="w-full">
                 </div>
                 <div>
                     <div class="flex justify-between text-[11px] mb-0.5">
-                        <span>نسبت غلبه چرخش مچ به حرکت بازو (Whip Dominance):</span>
-                        <span id="whipRatioLabel" class="font-mono text-amber-300">1.35x</span>
+                        <span>نسبت غلبه ضربه عمودی به حرکت افقی (Whip Dominance):</span>
+                        <span id="whipRatioLabel" class="font-mono text-amber-300">1.15x</span>
                     </div>
-                    <input id="whipRatioSlider" type="range" min="90" max="220" value="135" class="w-full">
+                    <input id="whipRatioSlider" type="range" min="75" max="210" value="115" class="w-full">
                 </div>
                 <div class="flex items-center justify-between pt-1">
                     <span class="text-[11px] text-stone-300">نمایش کریدورهای نوری ۹ خرک و برچسب نت‌ها:</span>
@@ -458,9 +459,9 @@
     <div class="fixed bottom-3 right-3 z-10 glass-panel px-3 py-2 rounded-2xl text-[11px] text-amber-100/85 max-w-xs sm:max-w-sm pointer-events-auto">
         <div class="font-bold text-amber-300 mb-0.5">راهنمای تعامل سه‌بعدی و مضراب زدن:</div>
         <ul class="space-y-0.5 list-disc list-inside text-[10.5px] text-stone-300">
-            <li><strong class="text-emerald-300">مشت کردن دست (Fist Grip):</strong> وقتی دستتان را مشت کنید، مضراب سه‌بعدی به صورت خودکار در دست قرار می‌گیرد و با چرخش مچ و ساعد (Pitch/Yaw/Roll) در فضای سه‌بعدی می‌چرخد.</li>
-            <li><strong class="text-amber-200">تفکیک حرکت عادی از ضربه:</strong> جابه‌جایی عادی دست در فضا یا بین خرک‌ها (<span class="text-red-300">TRAVEL_LOCKED</span>) هیچ صدایی تولید نمی‌کند؛ صدا فقط در لحظه <strong class="text-amber-300">ضربه شلاقی مچ روی سیم</strong> تولید می‌شود.</li>
-            <li><strong class="text-amber-200">کنترل با ماوس/کیبورد:</strong> حرکت عادی ماوس = جابه‌جایی بی‌صدای مضراب سه‌بعدی؛ <strong class="text-amber-200">کلیک چپ یا حرکت شلاقی تند رو به پایین</strong> = ضربه مضراب؛ <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">F</kbd> = باز/بستن مشت؛ <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">R</kbd> / کلیک راست = ریز پیوسته؛ <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">Space</kbd> = خفه کردن سیم‌ها.</li>
+            <li><strong class="text-emerald-300">مشت کردن دست (Fist Grip):</strong> وقتی دستتان را مشت کنید، مضراب سه‌بعدی در دست قفل می‌شود و با چرخش مچ و ساعد در فضای سه‌بعدی می‌چرخد.</li>
+            <li><strong class="text-amber-200">ضربه دقیق بدون تأخیر:</strong> به محض حرکت شلاقی مچ رو به پایین و عبور سر مضراب از روی سیم، نت همان خرک بلافاصله و بدون جا افتادن نواخته می‌شود.</li>
+            <li><strong class="text-amber-200">کنترل با ماوس/کیبورد:</strong> کلیک چپ یا حرکت شلاقی تند رو به پایین = ضربه مضراب؛ <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">F</kbd> = باز/بستن مشت؛ <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">R</kbd> / کلیک راست = ریز پیوسته؛ <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">Space</kbd> = خفه کردن سیم‌ها.</li>
         </ul>
     </div>
 
@@ -468,6 +469,38 @@
     <div id="toastBox" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl glass-panel border border-amber-400/50 text-xs font-semibold text-amber-100 shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
     <script>
+        /**
+         * ============================================================================
+         * 0. CROSS-BROWSER 2D CANVAS HELPERS & REUSABLE MATH VECTORS
+         * ============================================================================
+         */
+        function drawRoundRectPath(ctx, x, y, w, h, r) {
+            if (typeof ctx.roundRect === 'function') {
+                ctx.beginPath();
+                ctx.roundRect(x, y, w, h, r);
+                return;
+            }
+            const radius = Math.min(r, w * 0.5, h * 0.5);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.arcTo(x + w, y, x + w, y + h, radius);
+            ctx.arcTo(x + w, y + h, x, y + h, radius);
+            ctx.arcTo(x, y + h, x, y, radius);
+            ctx.arcTo(x, y, x + w, y, radius);
+            ctx.closePath();
+        }
+
+        // Reusable Three.js scratch objects to eliminate GC pauses in 60FPS loop
+        const _scratchVecA = new THREE.Vector3();
+        const _scratchVecB = new THREE.Vector3();
+        const _scratchVecC = new THREE.Vector3();
+        const _scratchVecD = new THREE.Vector3();
+        const _scratchMat4 = new THREE.Matrix4();
+        const _scratchQuat = new THREE.Quaternion();
+        const _scratchEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+        const _vecOne = new THREE.Vector3(1, 1, 1);
+        const _vecOpenScale = new THREE.Vector3(0.58, 0.58, 0.58);
+
         /**
          * ============================================================================
          * 1. PERSIAN MICROTONAL DASTGAH TUNING SYSTEM (36 COURSES / 144 3D STRINGS)
@@ -542,6 +575,7 @@
 
         function showToast(msg) {
             const toast = document.getElementById('toastBox');
+            if (!toast) return;
             toast.textContent = msg;
             toast.style.opacity = '1';
             clearTimeout(window.__toastTimer);
@@ -552,7 +586,7 @@
 
         /**
          * ============================================================================
-         * 2. QUAD-STRING WAVEGUIDE + WALNUT SOUNDBOARD SYNTHESIS ENGINE (WEB AUDIO API)
+         * 2. LEAK-FREE, POLYPHONY-MANAGED WEB AUDIO API ENGINE
          * ============================================================================
          */
         class SantoorAudioEngine {
@@ -570,14 +604,18 @@
                 this.customSampleBaseFreq = 392.0;
                 this.customSampleMix = 0.5;
 
-                this.activeVoices = { zard: [], sefid: [], posht: [] };
+                // Active voices with automatic node disconnection & voice stealing to prevent CPU hang
+                this.activeVoices = [];
+                this.maxPolyphony = 24;
                 this.waves = {};
                 this.noiseBuffer = null;
             }
 
             init() {
                 if (this.ctx) {
-                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    if (this.ctx.state === 'suspended') {
+                        this.ctx.resume().catch(() => {});
+                    }
                     return;
                 }
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -616,9 +654,9 @@
                 });
 
                 this.reverbNode = this.ctx.createConvolver();
-                this.reverbNode.buffer = this.buildSympatheticWalnutImpulse(2.6, 3.2);
+                this.reverbNode.buffer = this.buildSympatheticWalnutImpulse(2.2, 3.4);
                 this.reverbWet = this.ctx.createGain();
-                this.reverbWet.gain.value = 0.28;
+                this.reverbWet.gain.value = 0.26;
 
                 this.formantSum.connect(this.compressor);
                 this.formantSum.connect(this.reverbNode);
@@ -684,125 +722,181 @@
                 return impulse;
             }
 
+            cleanupVoice(voice) {
+                if (!voice || voice.cleaned) return;
+                voice.cleaned = true;
+                try {
+                    voice.oscillators.forEach(o => {
+                        try { o.stop(); } catch (e) {}
+                        try { o.disconnect(); } catch (e) {}
+                    });
+                    voice.nodesToDisconnect.forEach(n => {
+                        try { n.disconnect(); } catch (e) {}
+                    });
+                } catch (e) {}
+                const idx = this.activeVoices.indexOf(voice);
+                if (idx !== -1) this.activeVoices.splice(idx, 1);
+            }
+
             strikeCourse({ freq, zone = 'sefid', velocity = 0.8, isWoodMezrab = false, bridgeProx = 0.35 }) {
                 this.init();
                 const now = this.ctx.currentTime;
-                const clampedVel = Math.max(0.10, Math.min(1.0, velocity));
+                const clampedVel = Math.max(0.12, Math.min(1.0, velocity));
 
-                let sustainTime = 3.2;
-                if (zone === 'zard') sustainTime = 4.6;
-                else if (zone === 'sefid') sustainTime = 3.3;
-                else if (zone === 'posht') sustainTime = 2.3;
+                // Polyphony limit & voice stealing to prevent audio graph overload during fast Riz
+                while (this.activeVoices.length >= this.maxPolyphony) {
+                    const oldest = this.activeVoices.shift();
+                    if (oldest) this.cleanupVoice(oldest);
+                }
+
+                // If the exact same string course is already ringing strongly, gently attenuate older voice on same freq
+                for (let i = 0; i < this.activeVoices.length; i++) {
+                    const v = this.activeVoices[i];
+                    if (!v.cleaned && Math.abs(v.freq - freq) < 0.5) {
+                        try {
+                            v.courseGain.gain.cancelScheduledValues(now);
+                            v.courseGain.gain.setTargetAtTime(0.0001, now, 0.04);
+                        } catch (e) {}
+                    }
+                }
+
+                let sustainTime = 2.9;
+                if (zone === 'zard') sustainTime = 4.0;
+                else if (zone === 'sefid') sustainTime = 3.0;
+                else if (zone === 'posht') sustainTime = 2.1;
 
                 const courseGain = this.ctx.createGain();
-                const peakGain = clampedVel * 0.24 * (this.customSampleBuffer ? (1 - this.customSampleMix * 0.65) : 1.0);
+                const peakGain = clampedVel * 0.25 * (this.customSampleBuffer ? (1 - this.customSampleMix * 0.65) : 1.0);
                 courseGain.gain.setValueAtTime(0.0001, now);
-                courseGain.gain.linearRampToValueAtTime(peakGain, now + (isWoodMezrab ? 0.0018 : 0.0038));
-                courseGain.gain.exponentialRampToValueAtTime(peakGain * 0.32, now + 0.35);
+                courseGain.gain.linearRampToValueAtTime(peakGain, now + (isWoodMezrab ? 0.0018 : 0.0035));
+                courseGain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peakGain * 0.32), now + 0.32);
                 courseGain.gain.exponentialRampToValueAtTime(0.0001, now + sustainTime);
 
                 const stringFilter = this.ctx.createBiquadFilter();
                 stringFilter.type = 'lowpass';
-                const baseCutoff = freq * (isWoodMezrab ? 14.5 : 7.5) * (0.75 + bridgeProx * 0.85);
+                const baseCutoff = freq * (isWoodMezrab ? 14.5 : 7.8) * (0.75 + bridgeProx * 0.85);
                 const maxCutoff = Math.min(16500, baseCutoff * (0.65 + clampedVel * 0.6));
                 stringFilter.frequency.setValueAtTime(maxCutoff, now);
                 stringFilter.frequency.exponentialRampToValueAtTime(Math.max(freq * 2.2, 900), now + sustainTime * 0.78);
-                stringFilter.Q.value = isWoodMezrab ? 2.4 : 1.1;
+                stringFilter.Q.value = isWoodMezrab ? 2.3 : 1.1;
 
                 courseGain.connect(stringFilter);
                 stringFilter.connect(this.bodyInput);
 
-                const detuneCents = [-1.35, -0.45, +0.48, +1.40];
-                const inharmonicStretch = [1.0, 1.00018, 0.99985, 1.00032];
+                const oscillators = [];
+                const nodesToDisconnect = [courseGain, stringFilter];
+
+                // 4 Unison Strings per Kharak Course (authentic slight detuning + inharmonicity)
+                const detuneCents = [-1.30, -0.42, +0.45, +1.35];
+                const inharmonicStretch = [1.0, 1.00016, 0.99986, 1.00028];
 
                 for (let i = 0; i < 4; i++) {
                     const osc = this.ctx.createOscillator();
                     osc.setPeriodicWave(this.waves[zone] || this.waves.sefid);
                     osc.frequency.setValueAtTime(freq * inharmonicStretch[i], now);
-                    osc.detune.setValueAtTime(detuneCents[i] + (Math.random() - 0.5) * 0.3, now);
+                    const dCents = detuneCents[i] + (Math.random() - 0.5) * 0.25;
+                    osc.detune.setValueAtTime(dCents, now);
 
                     if (clampedVel > 0.65) {
-                        osc.detune.setValueAtTime(detuneCents[i] + clampedVel * 4.5, now);
-                        osc.detune.exponentialRampToValueAtTime(detuneCents[i], now + 0.045);
+                        osc.detune.setValueAtTime(dCents + clampedVel * 4.2, now);
+                        osc.detune.exponentialRampToValueAtTime(dCents, now + 0.045);
                     }
 
                     osc.connect(courseGain);
                     osc.start(now);
-                    osc.stop(now + sustainTime + 0.05);
+                    osc.stop(now + sustainTime + 0.04);
+                    oscillators.push(osc);
                 }
 
+                // Metallic High Partial Shimmer
                 const shimmerOsc = this.ctx.createOscillator();
                 const shimmerGain = this.ctx.createGain();
                 shimmerOsc.type = 'sine';
                 const partialMult = zone === 'zard' ? 2.996 : 4.018;
                 shimmerOsc.frequency.setValueAtTime(freq * partialMult, now);
-                const shimLevel = clampedVel * (isWoodMezrab ? 0.075 : 0.032) * (0.6 + bridgeProx * 0.7);
+                const shimLevel = Math.max(0.0002, clampedVel * (isWoodMezrab ? 0.072 : 0.032) * (0.6 + bridgeProx * 0.7));
                 shimmerGain.gain.setValueAtTime(shimLevel, now);
-                shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(0.9, sustainTime * 0.35));
+                shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(0.85, sustainTime * 0.35));
                 shimmerOsc.connect(shimmerGain);
                 shimmerGain.connect(this.bodyInput);
                 shimmerOsc.start(now);
-                shimmerOsc.stop(now + 0.95);
+                shimmerOsc.stop(now + 0.9);
+                oscillators.push(shimmerOsc);
+                nodesToDisconnect.push(shimmerGain);
 
+                // Mezrab Hammer Impact Transient
                 if (this.noiseBuffer) {
                     const hammerSrc = this.ctx.createBufferSource();
                     hammerSrc.buffer = this.noiseBuffer;
 
                     const hammerBand = this.ctx.createBiquadFilter();
                     hammerBand.type = 'bandpass';
-                    hammerBand.frequency.value = isWoodMezrab ? (2600 + bridgeProx * 1200) : (920 + bridgeProx * 500);
-                    hammerBand.Q.value = isWoodMezrab ? 2.2 : 1.3;
+                    hammerBand.frequency.value = isWoodMezrab ? (2600 + bridgeProx * 1200) : (940 + bridgeProx * 500);
+                    hammerBand.Q.value = isWoodMezrab ? 2.1 : 1.3;
 
                     const hammerGain = this.ctx.createGain();
-                    const transientDuration = isWoodMezrab ? 0.008 : 0.014;
-                    hammerGain.gain.setValueAtTime(clampedVel * (isWoodMezrab ? 0.35 : 0.18), now);
+                    const transientDuration = isWoodMezrab ? 0.009 : 0.015;
+                    hammerGain.gain.setValueAtTime(Math.max(0.0002, clampedVel * (isWoodMezrab ? 0.34 : 0.18)), now);
                     hammerGain.gain.exponentialRampToValueAtTime(0.0001, now + transientDuration);
 
                     hammerSrc.connect(hammerBand);
                     hammerBand.connect(hammerGain);
                     hammerGain.connect(this.bodyInput);
                     hammerSrc.start(now);
+                    oscillators.push(hammerSrc);
+                    nodesToDisconnect.push(hammerBand, hammerGain);
                 }
 
+                // Optional Custom WAV/MP3 Sample Layer
                 if (this.customSampleBuffer && this.customSampleMix > 0.01) {
                     const smpSrc = this.ctx.createBufferSource();
                     smpSrc.buffer = this.customSampleBuffer;
                     smpSrc.playbackRate.value = freq / Math.max(20, this.customSampleBaseFreq);
 
                     const smpGain = this.ctx.createGain();
-                    const smpPeak = clampedVel * this.customSampleMix * 0.65;
+                    const smpPeak = Math.max(0.0002, clampedVel * this.customSampleMix * 0.65);
                     smpGain.gain.setValueAtTime(smpPeak, now);
                     smpGain.gain.exponentialRampToValueAtTime(0.0001, now + sustainTime);
 
                     smpSrc.connect(smpGain);
                     smpGain.connect(this.bodyInput);
                     smpSrc.start(now);
+                    smpSrc.stop(now + sustainTime + 0.04);
+                    oscillators.push(smpSrc);
+                    nodesToDisconnect.push(smpGain);
                 }
 
-                const voiceRecord = { gainNode: courseGain, expires: now + sustainTime };
-                const zoneList = this.activeVoices[zone] || this.activeVoices.sefid;
-                zoneList.push(voiceRecord);
-                if (zoneList.length > 48) zoneList.shift();
+                const voiceRecord = {
+                    zone,
+                    freq,
+                    courseGain,
+                    oscillators,
+                    nodesToDisconnect,
+                    expires: now + sustainTime,
+                    cleaned: false
+                };
+                this.activeVoices.push(voiceRecord);
+
+                // Automatically disconnect all nodes from WebAudio graph when the main oscillator ends
+                oscillators[0].onended = () => {
+                    this.cleanupVoice(voiceRecord);
+                };
             }
 
             dampStrings(zone = 'all') {
                 if (!this.ctx) return;
                 const now = this.ctx.currentTime;
-                const zonesToDamp = zone === 'all' ? ['zard', 'sefid', 'posht'] : [zone];
-
-                zonesToDamp.forEach(z => {
-                    const list = this.activeVoices[z] || [];
-                    list.forEach(v => {
-                        if (v.expires > now) {
-                            try {
-                                v.gainNode.gain.cancelScheduledValues(now);
-                                v.gainNode.gain.setValueAtTime(Math.max(0.0001, v.gainNode.gain.value), now);
-                                v.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.085);
-                                v.expires = now + 0.09;
-                            } catch (e) {}
-                        }
-                    });
-                });
+                for (let i = this.activeVoices.length - 1; i >= 0; i--) {
+                    const v = this.activeVoices[i];
+                    if (!v || v.cleaned) continue;
+                    if (zone === 'all' || v.zone === zone) {
+                        try {
+                            v.courseGain.gain.cancelScheduledValues(now);
+                            v.courseGain.gain.setTargetAtTime(0.0001, now, 0.022);
+                            setTimeout(() => this.cleanupVoice(v), 110);
+                        } catch (e) {}
+                    }
+                }
             }
 
             playTombakStroke(type = 'tom') {
@@ -833,6 +927,9 @@
 
                 osc.connect(gain);
                 gain.connect(this.compressor);
+                osc.onended = () => {
+                    try { osc.disconnect(); gain.disconnect(); } catch (e) {}
+                };
                 osc.start(now);
                 osc.stop(now + 0.22);
             }
@@ -841,17 +938,28 @@
                 this.init();
                 if (!this.isRecording) {
                     this.recordedChunks = [];
-                    let mimeType = 'audio/webm';
-                    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
-                    this.mediaRecorder = mimeType
-                        ? new MediaRecorder(this.mediaStreamDest.stream, { mimeType })
-                        : new MediaRecorder(this.mediaStreamDest.stream);
+                    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', ''];
+                    let chosenMime = '';
+                    for (const m of candidates) {
+                        if (!m || (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m))) {
+                            chosenMime = m;
+                            break;
+                        }
+                    }
+                    try {
+                        this.mediaRecorder = chosenMime
+                            ? new MediaRecorder(this.mediaStreamDest.stream, { mimeType: chosenMime })
+                            : new MediaRecorder(this.mediaStreamDest.stream);
+                    } catch (err) {
+                        showToast('مرورگر شما از ضبط مستقیم صدا پشتیبانی نمی‌کند.');
+                        return false;
+                    }
 
                     this.mediaRecorder.ondataavailable = (e) => {
                         if (e.data && e.data.size > 0) this.recordedChunks.push(e.data);
                     };
                     this.mediaRecorder.onstop = () => {
-                        const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+                        const blob = new Blob(this.recordedChunks, { type: chosenMime || 'audio/webm' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -887,6 +995,7 @@
             autoForearmRoll: true,
             showCorridors: true,
             cameraActive: false,
+            isCameraInitializing: false,
 
             // 3D Stage & Calibration
             scale: 1.0,
@@ -894,21 +1003,21 @@
             tiltDegrees: 22,
             bodyOpacity: 0.90,
 
-            // Fist Detection & Strike Discrimination Thresholds
-            fistGripThreshold: 0.50,     // 0.30..0.75 curl ratio required to lock Mezrab in fist
-            strikeThreshold: 0.58,       // Minimum downward wrist-whip velocity (px/ms)
-            travelLockThreshold: 0.68,   // Wrist planar speed above which normal hand translation locks out strikes
-            whipDominanceRatio: 1.35,    // Ratio of rotational whip speed to planar wrist speed required to strike
+            // Tuned Fist Detection & Strike Discrimination Thresholds
+            fistGripThreshold: 0.45,     // Curl ratio required to hold Mezrab in fist
+            strikeThreshold: 0.46,       // Minimum downward wrist-whip / strike speed (px/ms)
+            travelLockThreshold: 0.72,   // Horizontal wrist speed above which sideways travel locks out glissando
+            whipDominanceRatio: 1.15,    // Ratio of downward strike speed to horizontal hand translation
 
             // Vibrations & Visual Effects
             stringVibrations: {},        // key: `${zone}_${kharak}` -> { amp, freq, time }
             particles2D: [],
             dampWaves: [],
 
-            // 3D Mouse/Touch Virtual Hand & Mezrab State (when webcam is off or alongside it)
+            // 3D Mouse/Touch Virtual Hand & Mezrab State
             pointer: {
                 active: true,
-                isFistGripped: true,     // Toggled via 'F' key or UI button
+                isFistGripped: true,
                 x: window.innerWidth * 0.58,
                 y: window.innerHeight * 0.48,
                 prevX: window.innerWidth * 0.58,
@@ -919,7 +1028,7 @@
                 vx: 0,
                 vy: 0,
                 prevVy: 0,
-                whipAnimPhase: 0,        // >0 when animating a 3D downward wrist-whip click strike
+                whipAnimPhase: 0,
                 pitchDeg: 14,
                 yawDeg: -12,
                 rollDeg: 8,
@@ -928,12 +1037,12 @@
                 lastStrikeTime: 0,
                 whipStartTime: 0,
                 peakWhipSpeed: 0,
+                whipCandidateTarget: null,
                 strikeApexY: 0,
                 isRizDown: false,
                 lockedTarget: null
             },
 
-            // Computed 3D & Projected 2D Corridor Geometry
             geom: {
                 corridors: []
             }
@@ -941,7 +1050,7 @@
 
         /**
          * ============================================================================
-         * 4. 3D WEBGL SCENE, SANTOOR MODEL, 144 3D STRINGS & 6-DOF 3D MEZRABS (THREE.JS)
+         * 4. 3D WEBGL SCENE, SANTOOR MODEL, OBJECT POOLING & 6-DOF MEZRABS (THREE.JS)
          * ============================================================================
          */
         const webglCanvas = document.getElementById('webglCanvas');
@@ -953,18 +1062,18 @@
         let santoorGroup, studioTableMesh;
         let kharakMeshes3D = { zard: [], sefid: [] };
         let corridorPlanes3D = [];
-        let stringCourses3D = {}; // key: `${zone}_${kharak}` -> Array of 4 THREE.Line objects with dynamic BufferGeometry
-        let impactRings3D = [];
+        let stringCourses3D = {};
+        let impactRingPool3D = [];
+        let activeImpactRings3D = [];
         let rightMezrab3D, leftMezrab3D;
         let rightHandSkeleton3D, leftHandSkeleton3D;
 
-        // Santoor 3D Physical Dimensions in Three.js World Units (1 unit ≈ 3.2 cm)
         const SANTOOR_3D = {
-            bottomWidth: 28.0,   // ~90 cm wide at bottom rail (Sim-e-Bamm close to player)
-            topWidth: 15.6,      // ~50 cm wide at top rail
-            depthSpan: 11.4,     // ~36 cm front-to-back depth (Z from -5.7 to +5.7)
+            bottomWidth: 28.0,
+            topWidth: 15.6,
+            depthSpan: 11.4,
             boardThickness: 1.05,
-            stringSurfaceY: 1.08,// Elevation of strings above soundboard top (Y=0.525 + bridge height 0.555)
+            stringSurfaceY: 1.08,
             corridorDefs: []
         };
 
@@ -974,7 +1083,6 @@
             c.height = 512;
             const g = c.getContext('2d');
 
-            // Rich Persian Walnut Burl Base
             const baseGrad = g.createLinearGradient(0, 0, 1024, 512);
             baseGrad.addColorStop(0, '#381d0e');
             baseGrad.addColorStop(0.35, '#4d2914');
@@ -983,7 +1091,6 @@
             g.fillStyle = baseGrad;
             g.fillRect(0, 0, 1024, 512);
 
-            // Organic wood fibers & grain lines
             for (let i = 0; i < 240; i++) {
                 const y = (i / 240) * 512;
                 g.beginPath();
@@ -997,7 +1104,6 @@
                 g.stroke();
             }
 
-            // Khatamkari Golden Geometric Border Inlay
             g.strokeStyle = '#d4a359';
             g.lineWidth = 10;
             g.strokeRect(12, 12, 1000, 488);
@@ -1028,8 +1134,7 @@
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-            // Studio Lighting
-            const ambientLight = new THREE.AmbientLight(0xfff3dd, 0.72);
+            const ambientLight = new THREE.AmbientLight(0xfff3dd, 0.74);
             scene.add(ambientLight);
 
             const mainSpot = new THREE.DirectionalLight(0xffedd5, 1.15);
@@ -1047,7 +1152,6 @@
             rimLightRight.position.set(16, 10, 4);
             scene.add(rimLightRight);
 
-            // Subtle Persian Studio Table Plane under the Santoor
             const tableGeo = new THREE.PlaneGeometry(65, 42);
             const tableMat = new THREE.MeshStandardMaterial({
                 color: 0x120a06,
@@ -1063,6 +1167,8 @@
             scene.add(studioTableMesh);
 
             build3DSantoorModel();
+            initImpactRingPool3D();
+
             rightMezrab3D = create3DMezrabGroup('right');
             leftMezrab3D = create3DMezrabGroup('left');
             scene.add(rightMezrab3D);
@@ -1074,6 +1180,51 @@
             scene.add(leftHandSkeleton3D.group);
         }
 
+        /**
+         * Pre-allocates 24 Reusable 3D Impact Rings so zero geometries/materials are created during play
+         */
+        function initImpactRingPool3D() {
+            impactRingPool3D = [];
+            activeImpactRings3D = [];
+            const sharedRingGeo = new THREE.RingGeometry(0.12, 0.26, 24);
+            sharedRingGeo.rotateX(-Math.PI / 2);
+
+            for (let i = 0; i < 24; i++) {
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: 0xfbbf24,
+                    transparent: true,
+                    opacity: 0,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                const ringMesh = new THREE.Mesh(sharedRingGeo, ringMat);
+                ringMesh.visible = false;
+                santoorGroup.add(ringMesh);
+                impactRingPool3D.push({ mesh: ringMesh, scale: 1.0, alpha: 0, active: false });
+            }
+        }
+
+        function spawnPooled3DImpactRing(worldX, worldZ, hexColor) {
+            let item = impactRingPool3D.find(r => !r.active);
+            if (!item) {
+                item = activeImpactRings3D.shift();
+            }
+            if (!item) return;
+
+            item.active = true;
+            item.scale = 1.0;
+            item.alpha = 0.95;
+            item.mesh.position.set(worldX || 0, SANTOOR_3D.stringSurfaceY + 0.04, worldZ || 0);
+            item.mesh.scale.set(1, 1, 1);
+            item.mesh.material.color.setHex(hexColor);
+            item.mesh.material.opacity = 0.95;
+            item.mesh.visible = true;
+
+            if (!activeImpactRings3D.includes(item)) {
+                activeImpactRings3D.push(item);
+            }
+        }
+
         function build3DSantoorModel() {
             if (santoorGroup) scene.remove(santoorGroup);
             santoorGroup = new THREE.Group();
@@ -1083,7 +1234,6 @@
             const dHalf = SANTOOR_3D.depthSpan * 0.5;
             const thick = SANTOOR_3D.boardThickness;
 
-            // 1. Trapezoidal Walnut Soundboard Body via ExtrudeGeometry
             const trapShape = new THREE.Shape();
             trapShape.moveTo(-bw * 0.5, -dHalf);
             trapShape.lineTo(bw * 0.5, -dHalf);
@@ -1100,7 +1250,7 @@
                 bevelSegments: 3
             };
             const bodyGeo = new THREE.ExtrudeGeometry(trapShape, extrudeSettings);
-            bodyGeo.rotateX(Math.PI / 2); // Lay flat on XZ plane: Z=+dHalf is front (Kharak 1), Z=-dHalf is back (Kharak 9)
+            bodyGeo.rotateX(Math.PI / 2);
             bodyGeo.translate(0, thick * 0.5, 0);
 
             const walnutTex = createProceduralWalnutTexture();
@@ -1115,7 +1265,6 @@
             soundboardMesh.receiveShadow = true;
             santoorGroup.add(soundboardMesh);
 
-            // 2. Two 3D Carved Persian Sound Rosettes (Gol-e-Santoor)
             const createRosette = (posX, posZ) => {
                 const golGroup = new THREE.Group();
                 golGroup.position.set(posX, thick * 0.52, posZ);
@@ -1142,7 +1291,6 @@
             createRosette(-4.8, 0.3);
             createRosette(4.8, 0.3);
 
-            // 3. Build 9 Kharak Corridors, 18 Turned Bridges, 72 Tuning Pegs, 72 Hitch Pins, and 144 3D Strings
             kharakMeshes3D = { zard: [], sefid: [] };
             corridorPlanes3D = [];
             stringCourses3D = {};
@@ -1178,10 +1326,17 @@
                 roughness: 0.22
             });
 
-            // Kharak 1 is closest to player (Z near +dHalf), Kharak 9 is furthest (Z near -dHalf)
+            const sharedBaseGeo = new THREE.CylinderGeometry(0.32, 0.42, 0.18, 18);
+            const sharedWaistGeo = new THREE.CylinderGeometry(0.18, 0.28, 0.24, 18);
+            const sharedCrownGeo = new THREE.CylinderGeometry(0.34, 0.20, 0.14, 18);
+            const sharedRodGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.62, 10);
+            sharedRodGeo.rotateX(Math.PI / 2);
+            const sharedPegGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8);
+            const sharedHitchGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.28, 8);
+
             for (let i = 0; i < 9; i++) {
                 const kharakNum = i + 1;
-                const tMid = (i + 0.5) / 9; // 0 = front (bottom), 1 = back (top)
+                const tMid = (i + 0.5) / 9;
                 const zMid = dHalf - tMid * SANTOOR_3D.depthSpan;
                 const zFront = dHalf - (i / 9) * SANTOOR_3D.depthSpan;
                 const zBack = dHalf - ((i + 1) / 9) * SANTOOR_3D.depthSpan;
@@ -1190,82 +1345,77 @@
                 const leftEdgeX = -widthAtZ * 0.5;
                 const rightEdgeX = widthAtZ * 0.5;
 
-                // Zard bridge sits at 71% from left edge; Sefid bridge sits at 35% from left edge
                 const zardBridgeX = leftEdgeX + widthAtZ * 0.71;
                 const sefidBridgeX = leftEdgeX + widthAtZ * 0.35;
 
-                const zardZ = zMid + 0.18;  // Zard course slightly closer to player
-                const sefidZ = zMid - 0.18; // Sefid course slightly behind Zard bridge
+                const zardZ = zMid + 0.18;
+                const sefidZ = zMid - 0.18;
 
-                // Corridor Glowing Highlight Plane on Soundboard
                 const corrPlaneGeo = new THREE.PlaneGeometry(widthAtZ - 0.4, (SANTOOR_3D.depthSpan / 9) * 0.92);
                 corrPlaneGeo.rotateX(-Math.PI / 2);
                 const corrPlaneMat = new THREE.MeshBasicMaterial({
                     color: (kharakNum === 3 || kharakNum === 6) ? 0xfde68a : 0xd97706,
                     transparent: true,
                     opacity: (kharakNum === 3 || kharakNum === 6) ? 0.10 : 0.02,
-                    side: THREE.DoubleSide
+                    side: THREE.DoubleSide,
+                    depthWrite: false
                 });
                 const corrPlane = new THREE.Mesh(corrPlaneGeo, corrPlaneMat);
                 corrPlane.position.set(0, thick * 0.53, zMid);
                 santoorGroup.add(corrPlane);
                 corridorPlanes3D.push({ mesh: corrPlane, kharak: kharakNum });
 
-                // Helper to build a 3D Turned Persian Kharak Pawn
                 const buildSingleKharakPawn = (bx, bz) => {
                     const kGroup = new THREE.Group();
                     kGroup.position.set(bx, thick * 0.52, bz);
 
-                    // Base pedestal
-                    const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 0.18, 20), kharakWoodMat.clone());
+                    const baseMesh = new THREE.Mesh(sharedBaseGeo, kharakWoodMat);
                     baseMesh.position.y = 0.09;
                     kGroup.add(baseMesh);
 
-                    // Curved waist
-                    const waistMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 0.24, 20), kharakWoodMat.clone());
+                    const waistMesh = new THREE.Mesh(sharedWaistGeo, kharakWoodMat);
                     waistMesh.position.y = 0.28;
                     kGroup.add(waistMesh);
 
-                    // Upper crown
-                    const crownMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.20, 0.14, 20), kharakWoodMat.clone());
+                    const crownMesh = new THREE.Mesh(sharedCrownGeo, kharakWoodMat);
                     crownMesh.position.y = 0.46;
                     kGroup.add(crownMesh);
 
-                    // Metallic saddle wire (Maftool) on top of Kharak
-                    const rodGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.62, 12);
-                    rodGeo.rotateX(Math.PI / 2);
-                    const rodMesh = new THREE.Mesh(rodGeo, metalCrownMat);
+                    const rodMesh = new THREE.Mesh(sharedRodGeo, metalCrownMat);
                     rodMesh.position.y = 0.55;
                     kGroup.add(rodMesh);
 
-                    kGroup.userData = { baseMesh, waistMesh, crownMesh, defaultMat: kharakWoodMat, zardMat: kharakHighlightZardMat, sefidMat: kharakHighlightSefidMat };
+                    kGroup.userData = {
+                        baseMesh,
+                        waistMesh,
+                        crownMesh,
+                        defaultMat: kharakWoodMat,
+                        zardMat: kharakHighlightZardMat,
+                        sefidMat: kharakHighlightSefidMat
+                    };
                     santoorGroup.add(kGroup);
                     return kGroup;
                 };
 
-                const zardKharakObj = buildSingleKharakPawn(zardBridgeX, zardZ);
-                const sefidKharakObj = buildSingleKharakPawn(sefidBridgeX, sefidZ);
-                kharakMeshes3D.zard.push(zardKharakObj);
-                kharakMeshes3D.sefid.push(sefidKharakObj);
+                kharakMeshes3D.zard.push(buildSingleKharakPawn(zardBridgeX, zardZ));
+                kharakMeshes3D.sefid.push(buildSingleKharakPawn(sefidBridgeX, sefidZ));
 
-                // Right Pinblock Tuning Pegs (گوشی‌ها) & Left Hitch Pins (سیم‌گیرها)
                 for (let s = 0; s < 4; s++) {
                     const pegZ = zMid + (s - 1.5) * 0.16;
-                    const pegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8), pegSteelMat);
+                    const pegMesh = new THREE.Mesh(sharedPegGeo, pegSteelMat);
                     pegMesh.rotation.z = -Math.PI / 4;
                     pegMesh.position.set(rightEdgeX + 0.12, 0.36, pegZ);
                     santoorGroup.add(pegMesh);
 
-                    const hitchMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.28, 8), metalCrownMat);
+                    const hitchMesh = new THREE.Mesh(sharedHitchGeo, metalCrownMat);
                     hitchMesh.rotation.z = Math.PI / 4;
                     hitchMesh.position.set(leftEdgeX - 0.10, 0.34, pegZ);
                     santoorGroup.add(hitchMesh);
                 }
 
-                // Build 4-String Unison Courses in 3D (Zard, Sefid, Posht-e-Kharak)
                 const create3DQuadStrings = (courseKey, xStart, xEnd, zBase, hexColor) => {
                     const lines = [];
-                    const segCount = 24;
+                    const segCount = 20;
                     const mat = new THREE.LineBasicMaterial({ color: hexColor, transparent: true, opacity: 0.92 });
 
                     for (let s = 0; s < 4; s++) {
@@ -1278,18 +1428,22 @@
                         }
                         const geo = new THREE.BufferGeometry().setFromPoints(pts);
                         const line = new THREE.Line(geo, mat.clone());
-                        line.userData = { xStart, xEnd, zLine: zBase + zOffset, segCount, baseColor: hexColor };
+                        line.userData = {
+                            xStart,
+                            xEnd,
+                            zLine: zBase + zOffset,
+                            segCount,
+                            baseColor: hexColor,
+                            wasVibrating: false
+                        };
                         santoorGroup.add(line);
                         lines.push(line);
                     }
                     stringCourses3D[courseKey] = lines;
                 };
 
-                // Zard Course (Right of Zard bridge & across to left edge)
                 create3DQuadStrings(`zard_${kharakNum}`, leftEdgeX, rightEdgeX, zardZ, 0xeab308);
-                // Sefid Course (Right of Sefid bridge to right edge)
                 create3DQuadStrings(`sefid_${kharakNum}`, sefidBridgeX, rightEdgeX, sefidZ, 0xe2e8f0);
-                // Posht-e-Kharak Course (Left edge to Sefid bridge)
                 create3DQuadStrings(`posht_${kharakNum}`, leftEdgeX, sefidBridgeX, sefidZ, 0xcbd5e1);
 
                 SANTOOR_3D.corridorDefs.push({
@@ -1310,11 +1464,6 @@
             recomputeSantoorGeometry();
         }
 
-        /**
-         * Builds an authentic 3D Sculpted Persian Mezrab (Finger Ring + Curved Bridge + Delicate Shaft + Tip)
-         * Wait: The group origin (0,0,0) is placed at the Grip/Finger Ring so rotating the hand rotates the shaft & tip around the wrist/grip!
-         * Local -Z / +X projects the shaft forward toward the tip at local position (0, 0, -shaftLength).
-         */
         function create3DMezrabGroup(side) {
             const group = new THREE.Group();
             const isRight = side === 'right';
@@ -1334,18 +1483,15 @@
                 metalness: 0.35
             });
 
-            // 1. Finger Loop Ring (حلقه انگشت مضراب) at origin (0,0,0)
             const fingerRing = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.085, 14, 32), ringMat);
             fingerRing.rotation.y = Math.PI / 2;
             group.add(fingerRing);
 
-            // Secondary thumb/middle support curve (دم مضراب)
             const tailCurve = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.065, 12, 24, Math.PI * 1.15), shaftMat);
             tailCurve.position.set(0, -0.22, 0.45);
             tailCurve.rotation.y = Math.PI / 2;
             group.add(tailCurve);
 
-            // 2. Delicate Tapering Mezrab Shaft (ساقه مضراب) extending along local -Z from 0 to -5.2
             const shaftLen = 5.2;
             const shaftGeo = new THREE.CylinderGeometry(0.055, 0.11, shaftLen, 14);
             shaftGeo.rotateX(Math.PI / 2);
@@ -1354,7 +1500,6 @@
             shaftMesh.castShadow = true;
             group.add(shaftMesh);
 
-            // 3. Curved Mezrab Tip / Namad (سر نمدی / چوبی مضراب) at local (0, -0.12, -5.65)
             const tipMat = new THREE.MeshStandardMaterial({
                 color: accentHex,
                 emissive: accentHex,
@@ -1367,7 +1512,6 @@
             tipMesh.position.set(0, -0.10, -5.65);
             group.add(tipMesh);
 
-            // Tip Point Light for dynamic reflection on strings when close
             const tipLight = new THREE.PointLight(accentHex, 0.7, 5.5);
             tipLight.position.set(0, -0.15, -5.65);
             group.add(tipLight);
@@ -1383,16 +1527,13 @@
             return group;
         }
 
-        /**
-         * Builds a 3D Articulated Hand Skeleton (21 3D Landmarks + Bone Connections) in the Three.js Scene
-         */
         const HAND_BONE_PAIRS = [
-            [0,1],[1,2],[2,3],[3,4],       // Thumb
-            [0,5],[5,6],[6,7],[7,8],       // Index
-            [0,9],[9,10],[10,11],[11,12],  // Middle
-            [0,13],[13,14],[14,15],[15,16],// Ring
-            [0,17],[17,18],[18,19],[19,20],// Pinky
-            [5,9],[9,13],[13,17]           // Palm knuckle arch
+            [0,1],[1,2],[2,3],[3,4],
+            [0,5],[5,6],[6,7],[7,8],
+            [0,9],[9,10],[10,11],[11,12],
+            [0,13],[13,14],[14,15],[15,16],
+            [0,17],[17,18],[18,19],[19,20],
+            [5,9],[9,13],[13,17]
         ];
 
         function create3DHandSkeleton(side) {
@@ -1410,7 +1551,7 @@
             const joints = [];
             for (let i = 0; i < 21; i++) {
                 const r = (i === 0) ? 0.24 : ([4,8,12,16,20].includes(i) ? 0.15 : 0.13);
-                const jm = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 12), jointMat.clone());
+                const jm = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 10), jointMat);
                 group.add(jm);
                 joints.push(jm);
             }
@@ -1430,11 +1571,11 @@
             return { group, joints, bonesLine, bonePositions };
         }
 
-        function applyCameraPreset(presetName, immediate = false) {
+        function applyCameraPreset(presetName) {
             appState.cameraPreset = presetName;
             const tiltRad = (appState.tiltDegrees * Math.PI) / 180;
-            let targetPos = new THREE.Vector3(0, 14.5, 19.5);
-            let lookAtPos = new THREE.Vector3(0, (0.54 - appState.yOffsetRatio) * 14, 0.6);
+            const targetPos = _scratchVecA.set(0, 14.5, 19.5);
+            const lookAtPos = _scratchVecB.set(0, (0.54 - appState.yOffsetRatio) * 14, 0.6);
 
             if (presetName === 'performer') {
                 const dist = 23.5 / appState.scale;
@@ -1444,7 +1585,6 @@
                 targetPos.set(0, Math.sin(tiltRad + 0.28) * dist, Math.cos(tiltRad + 0.28) * dist);
                 lookAtPos.set(0, 0.5, 0.8);
             } else if (presetName === 'side') {
-                // Side view shows the 3D height of the Mezrab above the string plane clearly!
                 const dist = 22.0 / appState.scale;
                 targetPos.set(dist * 0.78, 6.2, dist * 0.55);
                 lookAtPos.set(0, 1.0, 0.2);
@@ -1461,25 +1601,19 @@
             }
         }
 
-        /**
-         * Projects a 3D world point (THREE.Vector3) to 2D Canvas pixel coordinates
-         */
-        function project3DToScreen(vec3) {
-            if (!camera) return { x: 0, y: 0 };
-            const v = vec3.clone().project(camera);
+        function project3DToScreen(x, y, z) {
+            if (!camera) return { x: 0, y: 0, z: 0 };
+            _scratchVecC.set(x, y, z).project(camera);
             return {
-                x: (v.x * 0.5 + 0.5) * arCanvas.width,
-                y: (-v.y * 0.5 + 0.5) * arCanvas.height,
-                z: v.z
+                x: (_scratchVecC.x * 0.5 + 0.5) * arCanvas.width,
+                y: (-_scratchVecC.y * 0.5 + 0.5) * arCanvas.height,
+                z: _scratchVecC.z
             };
         }
 
-        /**
-         * Recomputes the 9-Kharak 3D & 2D projected corridor definitions for hit-testing and HUD labels
-         */
         function recomputeSantoorGeometry() {
             if (!camera || !SANTOOR_3D.corridorDefs.length) return;
-            applyCameraPreset(appState.cameraPreset, true);
+            applyCameraPreset(appState.cameraPreset);
 
             const tuning = DASTGAH_TUNINGS[appState.currentDastgahKey];
             const corridors = [];
@@ -1493,13 +1627,12 @@
                 const sefidFreq = calcMicrotonalFreq(bridgeData.sefid.midi, bridgeData.sefid.cents);
                 const poshtFreq = sefidFreq * 2.0;
 
-                // Project key 3D points of this Kharak onto the 2D screen canvas
-                const pLeft = project3DToScreen(new THREE.Vector3(c3d.leftEdgeX, SANTOOR_3D.stringSurfaceY, c3d.zMid));
-                const pRight = project3DToScreen(new THREE.Vector3(c3d.rightEdgeX, SANTOOR_3D.stringSurfaceY, c3d.zMid));
-                const pFront = project3DToScreen(new THREE.Vector3(0, SANTOOR_3D.stringSurfaceY, c3d.zFront));
-                const pBack = project3DToScreen(new THREE.Vector3(0, SANTOOR_3D.stringSurfaceY, c3d.zBack));
-                const pZardBridge = project3DToScreen(new THREE.Vector3(c3d.zardBridgeX, SANTOOR_3D.stringSurfaceY + 0.35, c3d.zardZ));
-                const pSefidBridge = project3DToScreen(new THREE.Vector3(c3d.sefidBridgeX, SANTOOR_3D.stringSurfaceY + 0.35, c3d.sefidZ));
+                const pLeft = project3DToScreen(c3d.leftEdgeX, SANTOOR_3D.stringSurfaceY, c3d.zMid);
+                const pRight = project3DToScreen(c3d.rightEdgeX, SANTOOR_3D.stringSurfaceY, c3d.zMid);
+                const pFront = project3DToScreen(0, SANTOOR_3D.stringSurfaceY, c3d.zFront);
+                const pBack = project3DToScreen(0, SANTOOR_3D.stringSurfaceY, c3d.zBack);
+                const pZardBridge = project3DToScreen(c3d.zardBridgeX, SANTOOR_3D.stringSurfaceY + 0.35, c3d.zardZ);
+                const pSefidBridge = project3DToScreen(c3d.sefidBridgeX, SANTOOR_3D.stringSurfaceY + 0.35, c3d.sefidZ);
 
                 const yTop = Math.min(pFront.y, pBack.y);
                 const yBottom = Math.max(pFront.y, pBack.y);
@@ -1572,7 +1705,7 @@
 
         /**
          * ============================================================================
-         * 5. FIST GRIP DETECTION + 6-DOF 3D ROTATION & 5-GATE STRIKE KINEMATICS ENGINE
+         * 5. FIXED & UPGRADED FIST DETECTION + DUAL-TRIGGER STRIKE KINEMATICS ENGINE
          * ============================================================================
          */
         class AdaptivePoint3D {
@@ -1582,39 +1715,38 @@
                 this.z = 0;
                 this.initialized = false;
             }
+            reset(rawX, rawY, rawZ) {
+                this.x = rawX;
+                this.y = rawY;
+                this.z = rawZ;
+                this.initialized = true;
+            }
             update(rawX, rawY, rawZ, dtMs) {
                 if (!this.initialized) {
-                    this.x = rawX;
-                    this.y = rawY;
-                    this.z = rawZ;
-                    this.initialized = true;
+                    this.reset(rawX, rawY, rawZ);
                     return;
                 }
                 const dist = Math.hypot(rawX - this.x, rawY - this.y);
                 const speed = dist / Math.max(1, dtMs);
-                const alpha = Math.min(0.93, Math.max(0.26, speed * 0.44));
-                this.x = this.x + alpha * (rawX - this.x);
-                this.y = this.y + alpha * (rawY - this.y);
-                this.z = this.z + alpha * (rawZ - this.z);
+                const alpha = Math.min(0.94, Math.max(0.32, speed * 0.48));
+                this.x += alpha * (rawX - this.x);
+                this.y += alpha * (rawY - this.y);
+                this.z += alpha * (rawZ - this.z);
             }
         }
 
         class HandMezrabController3D {
             constructor(side) {
-                this.side = side; // 'right' | 'left'
+                this.side = side;
                 this.active = false;
                 this.lastSeenTime = 0;
 
-                // 21 Smoothed Screen/Normalized Landmarks
                 this.landmarks = Array.from({ length: 21 }, () => new AdaptivePoint3D());
-                // 21 3D World Coordinates in Three.js Santoor Space
                 this.worldLandmarks = Array.from({ length: 21 }, () => new THREE.Vector3());
 
-                // Automatic Fist / Mezrab Grip Detection State
                 this.isGripped = false;
-                this.gripCurlScore = 0; // 0.0 (open flat hand) to 1.0 (tight fist / Mezrab grip)
+                this.gripCurlScore = 0;
 
-                // 6-DOF 3D Pose of the Mezrab
                 this.wristPos = { x: 0, y: 0, z: 0 };
                 this.prevWristPos = { x: 0, y: 0, z: 0 };
                 this.ringPos = { x: 0, y: 0, z: 0 };
@@ -1627,8 +1759,7 @@
                 this.eulerDeg = { pitch: 0, yaw: 0, roll: 0 };
                 this.prevPitchDeg = 0;
 
-                // Kinematics Vectors (px/ms & deg/ms)
-                this.vWrist = { x: 0, y: 0, z: 0, planarMag: 0 };
+                this.vWrist = { x: 0, y: 0, z: 0, planarMag: 0, horizMag: 0 };
                 this.vTip = { x: 0, y: 0, z: 0, mag: 0 };
                 this.vRel = { x: 0, y: 0, z: 0, mag: 0 };
                 this.whipSpeedDown = 0;
@@ -1637,9 +1768,8 @@
                 this.angularPitchVel = 0;
                 this.peakWhipSpeed = 0;
                 this.whipStartTime = 0;
+                this.whipCandidateTarget = null;
 
-                // 5-Gate State Machine:
-                // 'OPEN_RELEASED' | 'ARMED' | 'TRAVEL_LOCKED' | 'WHIPPING' | 'REBOUND' | 'RIZ_MODE' | 'MUTE_PALM'
                 this.state = 'ARMED';
                 this.lastStrikeTime = 0;
                 this.strikeApexY = 0;
@@ -1656,27 +1786,23 @@
                 this.lastDampTime = 0;
             }
 
-            /**
-             * Computes the Fist / Mezrab Grip Curl Score (0..1) from the 21 3D hand landmarks.
-             * When the user clenches their fist ("مشت می‌کند") or curls fingers to hold the Mezrab,
-             * fingertips (8, 12, 16, 20) fold inward close to the MCP bases (5, 9, 13, 17) & wrist (0).
-             */
             computeFistGripState(threshold) {
                 const lm0 = this.landmarks[0];
+                const lm4 = this.landmarks[4];
                 const lm5 = this.landmarks[5];
+                const lm8 = this.landmarks[8];
                 const lm9 = this.landmarks[9];
-                const lm13 = this.landmarks[13];
                 const lm17 = this.landmarks[17];
 
                 const palmScale = Math.hypot(lm0.x - lm9.x, lm0.y - lm9.y) +
                                   Math.hypot(lm5.x - lm17.x, lm5.y - lm17.y) * 0.5 || 1;
 
-                // Measure normalized extension of Index(8), Middle(12), Ring(16), Pinky(20) from their MCP joints & Wrist
+                // Evaluate finger curl AND index-thumb Mezrab pinch so both full fist and authentic Mezrab grip are detected
                 const fingerConfigs = [
-                    { tip: 8, pip: 6, mcp: 5, weight: 0.22 },
+                    { tip: 8, pip: 6, mcp: 5, weight: 0.25 },
                     { tip: 12, pip: 10, mcp: 9, weight: 0.28 },
-                    { tip: 16, pip: 14, mcp: 13, weight: 0.26 },
-                    { tip: 20, pip: 18, mcp: 17, weight: 0.24 }
+                    { tip: 16, pip: 14, mcp: 13, weight: 0.24 },
+                    { tip: 20, pip: 18, mcp: 17, weight: 0.23 }
                 ];
 
                 let totalCurl = 0;
@@ -1691,24 +1817,28 @@
                     const distTipToWrist = Math.hypot(tipLm.x - lm0.x, tipLm.y - lm0.y, (tipLm.z - lm0.z) * 0.5) / palmScale;
                     const distPipToWrist = Math.hypot(pipLm.x - lm0.x, pipLm.y - lm0.y, (pipLm.z - lm0.z) * 0.5) / palmScale;
 
-                    // When finger is curled into a fist, distTipToMcp drops from ~0.95 down to ~0.22..0.48
-                    // or tip is closer to wrist than PIP joint
-                    let fingerCurl = 1.0 - Math.min(1.0, Math.max(0.0, (distTipToMcp - 0.26) / 0.68));
-                    if (distTipToWrist < distPipToWrist * 1.06) {
-                        fingerCurl = Math.max(fingerCurl, 0.85);
+                    let fingerCurl = 1.0 - Math.min(1.0, Math.max(0.0, (distTipToMcp - 0.25) / 0.72));
+                    if (distTipToWrist < distPipToWrist * 1.08) {
+                        fingerCurl = Math.max(fingerCurl, 0.86);
                     }
                     totalCurl += fingerCurl * fc.weight;
 
-                    if (distTipToMcp > 0.74 && distTipToWrist > distPipToWrist * 1.15) {
+                    if (distTipToMcp > 0.78 && distTipToWrist > distPipToWrist * 1.15) {
                         extendedCount++;
                     }
                 }
 
+                // Boost score if thumb (4) and index finger (5/6/8) are pinched together holding a Mezrab
+                const thumbIndexDist = Math.hypot(lm4.x - lm8.x, lm4.y - lm8.y) / palmScale;
+                const thumbMcpDist = Math.hypot(lm4.x - lm5.x, lm4.y - lm5.y) / palmScale;
+                if (thumbIndexDist < 0.42 || thumbMcpDist < 0.36) {
+                    totalCurl = Math.min(1.0, totalCurl + 0.16);
+                }
+
                 this.gripCurlScore = Math.min(1.0, Math.max(0.0, totalCurl));
 
-                // Hysteresis gate so grip never flickers during rapid wrist whips
                 const enterThresh = threshold;
-                const exitThresh = Math.max(0.22, threshold - 0.14);
+                const exitThresh = Math.max(0.20, threshold - 0.15);
 
                 if (!this.isGripped && this.gripCurlScore >= enterThresh) {
                     this.isGripped = true;
@@ -1716,16 +1846,13 @@
                     this.isGripped = false;
                 }
 
-                // Open palm mute requires all 4 fingers extended (not gripped) and slow motion
-                this.isOpenPalmMute = (!this.isGripped && extendedCount >= 4 && this.gripCurlScore < 0.28);
+                this.isOpenPalmMute = (!this.isGripped && extendedCount >= 4 && this.gripCurlScore < 0.26);
             }
 
-            /**
-             * Updates 6-DOF 3D Hand Skeleton, 3D Mezrab Pose (Position + Quaternion Orientation),
-             * and runs the 5-Gate Strike Discrimination Engine.
-             */
             updateFromMediaPipe(rawLandmarks, canvasW, canvasH, nowMs, config) {
-                const dt = Math.min(60, Math.max(4, nowMs - (this.lastSeenTime || (nowMs - 16))));
+                const timeGap = nowMs - (this.lastSeenTime || 0);
+                const isFreshReacquire = (!this.active || timeGap > 160);
+                const dt = isFreshReacquire ? 16 : Math.min(55, Math.max(4, timeGap));
                 this.lastSeenTime = nowMs;
                 this.active = true;
 
@@ -1734,17 +1861,18 @@
                     const mx = (1.0 - rawLandmarks[i].x) * canvasW;
                     const my = rawLandmarks[i].y * canvasH;
                     const mz = rawLandmarks[i].z * canvasW;
-                    this.landmarks[i].update(mx, my, mz, dt);
+                    if (isFreshReacquire) {
+                        this.landmarks[i].reset(mx, my, mz);
+                    } else {
+                        this.landmarks[i].update(mx, my, mz, dt);
+                    }
 
-                    // Map normalized screen coordinates into Three.js 3D Santoor workspace
-                    const normX = (1.0 - rawLandmarks[i].x) - 0.5; // -0.5 (left) to +0.5 (right)
-                    const normY = rawLandmarks[i].y - 0.5;         // -0.5 (top/back) to +0.5 (bottom/front)
-                    const normZ = rawLandmarks[i].z;               // relative depth from wrist
+                    const normX = (1.0 - rawLandmarks[i].x) - 0.5;
+                    const normY = rawLandmarks[i].y - 0.5;
+                    const normZ = rawLandmarks[i].z;
 
-                    // Map so moving hand up/down and forward/back moves naturally over the 3D Santoor
                     const wx = normX * 29.0;
                     const wz = normY * 14.5;
-                    // Height above strings (Y): higher on screen or further from table = higher Y
                     const wy = Math.max(0.72, 2.8 - normY * 2.2 - normZ * 6.5);
                     this.worldLandmarks[i].set(wx, wy, wz);
                 }
@@ -1752,71 +1880,15 @@
                 // 2. Evaluate Fist / Mezrab Grip State
                 this.computeFistGripState(config.fistGripThreshold);
 
-                this.prevWristPos = { ...this.wristPos };
-                this.prevTipPos = { ...this.tipPos };
-                this.prevPitchDeg = this.eulerDeg.pitch;
-
                 const lm0 = this.landmarks[0];
                 const lm4 = this.landmarks[4];
                 const lm5 = this.landmarks[5];
                 const lm8 = this.landmarks[8];
                 const lm9 = this.landmarks[9];
-                const lm12 = this.landmarks[12];
                 const lm17 = this.landmarks[17];
 
-                this.wristPos = { x: lm0.x, y: lm0.y, z: lm0.z };
-
-                // 3. Compute 6-DOF 3D Orientation Basis of the Hand & Mezrab
-                const w0 = this.worldLandmarks[0];
-                const w4 = this.worldLandmarks[4];
-                const w5 = this.worldLandmarks[5];
-                const w8 = this.worldLandmarks[8];
-                const w9 = this.worldLandmarks[9];
-                const w12 = this.worldLandmarks[12];
-                const w17 = this.worldLandmarks[17];
-
-                // Grip anchor in 3D space (where the Mezrab finger ring sits in the clenched fist / index-thumb grip)
-                this.worldRingPos.copy(w5).multiplyScalar(0.55).addScaledVector(w4, 0.30).addScaledVector(w9, 0.15);
-
-                // Forward shaft direction vector in 3D: from Wrist/Palm base through the Index/Middle knuckle grip axis
-                const gripFront3D = new THREE.Vector3()
-                    .copy(w5).multiplyScalar(0.45)
-                    .addScaledVector(w8, 0.30)
-                    .addScaledVector(w4, 0.25);
-                const forwardDir = new THREE.Vector3().subVectors(gripFront3D, w0).normalize();
-
-                // Lateral across-palm vector (Index MCP 5 to Pinky MCP 17)
-                const acrossPalm = new THREE.Vector3().subVectors(w17, w5).normalize();
-                if (this.side === 'left') acrossPalm.negate();
-
-                // Orthonormal basis construction for 3D Mezrab rotation
-                const palmNormal = new THREE.Vector3().crossVectors(forwardDir, acrossPalm).normalize();
-                if (palmNormal.y < 0) palmNormal.negate();
-                const orthoRight = new THREE.Vector3().crossVectors(forwardDir, palmNormal).normalize();
-                const orthoUp = new THREE.Vector3().crossVectors(orthoRight, forwardDir).normalize();
-
-                // In Three.js, Mezrab shaft extends along local -Z, so local +Z is -forwardDir
-                const rotMat = new THREE.Matrix4().makeBasis(
-                    orthoRight,
-                    orthoUp,
-                    forwardDir.clone().negate()
-                );
-                const targetQuat = new THREE.Quaternion().setFromRotationMatrix(rotMat);
-                this.quaternion3D.slerp(targetQuat, 0.65);
-
-                const euler = new THREE.Euler().setFromQuaternion(this.quaternion3D, 'YXZ');
-                this.eulerDeg = {
-                    pitch: THREE.MathUtils.radToDeg(euler.x),
-                    yaw: THREE.MathUtils.radToDeg(euler.y),
-                    roll: THREE.MathUtils.radToDeg(euler.z)
-                };
-                this.forearmRollAngle = Math.atan2(lm17.y - lm5.y, lm17.x - lm5.x) * (180 / Math.PI);
-
-                // Compute 3D World Tip Position from the Mezrab's 6-DOF transform
-                const tipOffset = new THREE.Vector3(0, -0.10, -5.65).applyQuaternion(this.quaternion3D);
-                this.worldTipPos.copy(this.worldRingPos).add(tipOffset);
-
-                // Project 3D Ring and Tip onto 2D screen for unified corridor mapping & HUD
+                // Compute current Ring and Tip positions
+                const curWrist = { x: lm0.x, y: lm0.y, z: lm0.z };
                 this.ringPos = {
                     x: lm5.x * 0.60 + lm4.x * 0.40,
                     y: lm5.y * 0.60 + lm4.y * 0.40,
@@ -1829,64 +1901,116 @@
                 const shaftVecY = clusterY - lm0.y;
                 const shaftVecZ = clusterZ - lm0.z;
 
-                this.tipPos = {
+                const curTip = {
                     x: clusterX + shaftVecX * 0.52,
                     y: clusterY + shaftVecY * 0.52,
                     z: clusterZ + shaftVecZ * 0.52
                 };
 
-                // 4. Compute 3D Wrist Translation vs. Rotational Wrist-Whip Kinematics
+                // Prevent false velocity jump on initial hand appearance
+                if (isFreshReacquire) {
+                    this.wristPos = { ...curWrist };
+                    this.prevWristPos = { ...curWrist };
+                    this.tipPos = { ...curTip };
+                    this.prevTipPos = { ...curTip };
+                } else {
+                    this.prevWristPos = { ...this.wristPos };
+                    this.prevTipPos = { ...this.tipPos };
+                    this.wristPos = curWrist;
+                    this.tipPos = curTip;
+                }
+
+                // 3. Compute 6-DOF 3D Orientation Basis of the Hand & Mezrab (Zero-Allocation)
+                const w0 = this.worldLandmarks[0];
+                const w4 = this.worldLandmarks[4];
+                const w5 = this.worldLandmarks[5];
+                const w8 = this.worldLandmarks[8];
+                const w9 = this.worldLandmarks[9];
+                const w17 = this.worldLandmarks[17];
+
+                this.worldRingPos.copy(w5).multiplyScalar(0.55).addScaledVector(w4, 0.30).addScaledVector(w9, 0.15);
+
+                _scratchVecA.copy(w5).multiplyScalar(0.45).addScaledVector(w8, 0.30).addScaledVector(w4, 0.25);
+                const forwardDir = _scratchVecA.sub(w0).normalize();
+
+                const acrossPalm = _scratchVecB.subVectors(w17, w5).normalize();
+                if (this.side === 'left') acrossPalm.negate();
+
+                const palmNormal = _scratchVecC.crossVectors(forwardDir, acrossPalm).normalize();
+                if (palmNormal.y < 0) palmNormal.negate();
+                const orthoRight = _scratchVecD.crossVectors(forwardDir, palmNormal).normalize();
+                const orthoUp = _scratchVecB.crossVectors(orthoRight, forwardDir).normalize();
+
+                _scratchMat4.makeBasis(orthoRight, orthoUp, _scratchVecC.copy(forwardDir).negate());
+                _scratchQuat.setFromRotationMatrix(_scratchMat4);
+                this.quaternion3D.slerp(_scratchQuat, 0.65);
+
+                this.prevPitchDeg = this.eulerDeg.pitch;
+                _scratchEuler.setFromQuaternion(this.quaternion3D, 'YXZ');
+                this.eulerDeg.pitch = THREE.MathUtils.radToDeg(_scratchEuler.x);
+                this.eulerDeg.yaw = THREE.MathUtils.radToDeg(_scratchEuler.y);
+                this.eulerDeg.roll = THREE.MathUtils.radToDeg(_scratchEuler.z);
+
+                this.forearmRollAngle = Math.atan2(lm17.y - lm5.y, lm17.x - lm5.x) * (180 / Math.PI);
+
+                _scratchVecA.set(0, -0.10, -5.65).applyQuaternion(this.quaternion3D);
+                this.worldTipPos.copy(this.worldRingPos).add(_scratchVecA);
+
+                // 4. Compute 3D Wrist Translation vs. Rotational/Vertical Strike Kinematics
                 this.vWrist.x = (this.wristPos.x - this.prevWristPos.x) / dt;
                 this.vWrist.y = (this.wristPos.y - this.prevWristPos.y) / dt;
                 this.vWrist.z = (this.wristPos.z - this.prevWristPos.z) / dt;
                 this.vWrist.planarMag = Math.hypot(this.vWrist.x, this.vWrist.y);
+                this.vWrist.horizMag = Math.abs(this.vWrist.x);
 
                 this.vTip.x = (this.tipPos.x - this.prevTipPos.x) / dt;
                 this.vTip.y = (this.tipPos.y - this.prevTipPos.y) / dt;
                 this.vTip.z = (this.tipPos.z - this.prevTipPos.z) / dt;
                 this.vTip.mag = Math.hypot(this.vTip.x, this.vTip.y);
 
-                // Pure rotational velocity of Mezrab tip relative to the wrist hinge
                 this.vRel.x = this.vTip.x - this.vWrist.x;
                 this.vRel.y = this.vTip.y - this.vWrist.y;
                 this.vRel.z = this.vTip.z - this.vWrist.z;
                 this.vRel.mag = Math.hypot(this.vRel.x, this.vRel.y);
 
-                // Downward angular pitch rate (deg/ms)
                 this.angularPitchVel = (this.eulerDeg.pitch - this.prevPitchDeg) / dt;
 
-                // Combined downward wrist-whip speed (positive when tip whips downward/forward relative to wrist)
+                // Combined downward strike speed: rotational wrist whip + intentional vertical downward drop of tip
                 this.prevWhipSpeedDown = this.whipSpeedDown;
-                this.whipSpeedDown = Math.max(0, this.vRel.y) + Math.max(0, -this.vRel.z * 0.35);
+                const rotDown = Math.max(0, this.vRel.y) + Math.max(0, -this.vRel.z * 0.35);
+                const tipDown = Math.max(0, this.vTip.y);
+                this.whipSpeedDown = Math.max(rotDown, tipDown * 0.82);
                 this.whipAccel = (this.whipSpeedDown - this.prevWhipSpeedDown) / dt;
 
                 // 5. Detect Rapid Wrist Tremolo Oscillation for RIZ_MODE
-                const curSign = Math.sign(this.vRel.y);
-                if (curSign !== 0 && curSign !== this.lastOscSign && Math.abs(this.vRel.y) > 0.24) {
-                    if (nowMs - this.lastOscFlipTime < 125) {
+                const oscVel = Math.abs(this.vRel.y) > Math.abs(this.vTip.y) ? this.vRel.y : this.vTip.y;
+                const curSign = Math.sign(oscVel);
+                if (curSign !== 0 && curSign !== this.lastOscSign && Math.abs(oscVel) > 0.22) {
+                    if (nowMs - this.lastOscFlipTime < 130) {
                         this.oscillationCounter = Math.min(10, this.oscillationCounter + 1);
                     } else {
                         this.oscillationCounter = Math.max(0, this.oscillationCounter - 1);
                     }
                     this.lastOscFlipTime = nowMs;
                     this.lastOscSign = curSign;
-                } else if (nowMs - this.lastOscFlipTime > 170) {
+                } else if (nowMs - this.lastOscFlipTime > 175) {
                     this.oscillationCounter = 0;
                 }
-                this.isPinchRiz = (this.isGripped && this.oscillationCounter >= 4 && this.vWrist.planarMag < config.travelLockThreshold * 0.75);
+                this.isPinchRiz = (this.isGripped && this.oscillationCounter >= 4 && this.vWrist.horizMag < config.travelLockThreshold * 0.75);
 
-                // Lookup target Santoor Kharak & Zone beneath Mezrab Tip
-                this.hoveredTarget = findSantoorTargetAt(this.tipPos.x, this.tipPos.y);
+                // Lookup target Santoor Kharak & Zone beneath Mezrab Tip (or along path since last frame)
+                this.hoveredTarget = findSantoorTargetAt(this.tipPos.x, this.tipPos.y) ||
+                                     findSantoorTargetAlongSegment(this.prevTipPos.x, this.prevTipPos.y, this.tipPos.x, this.tipPos.y);
 
-                // 6. Execute 5-Gate Strike vs. Normal Movement Discrimination Machine
+                // 6. Execute Upgraded 5-Gate Strike Machine
                 this.evaluate5GateStrikeMachine(nowMs, config);
             }
 
             evaluate5GateStrikeMachine(nowMs, config) {
-                // GATE 0: Open-Palm String Damping (خفه کردن سیم‌ها وقتی دست کامل باز است)
+                // GATE 0: Open-Palm String Damping
                 if (this.isOpenPalmMute && this.hoveredTarget) {
                     this.state = 'MUTE_PALM';
-                    if (this.vWrist.planarMag < config.travelLockThreshold * 0.7 && nowMs - this.lastDampTime > 95) {
+                    if (this.vWrist.planarMag < config.travelLockThreshold * 0.75 && nowMs - this.lastDampTime > 95) {
                         audioEngine.dampStrings(this.hoveredTarget.zone);
                         spawnDampWaveEffect(this.tipPos.x, this.tipPos.y, this.hoveredTarget.zone);
                         this.lastDampTime = nowMs;
@@ -1896,39 +2020,40 @@
                 }
 
                 // GATE 1: Fist / Grip Verification Gate
-                // If user has NOT clenched their hand into a fist / Mezrab grip, NEVER produce sound!
                 if (!this.isGripped) {
                     this.state = 'OPEN_RELEASED';
                     this.peakWhipSpeed = 0;
+                    this.whipCandidateTarget = null;
                     this.lockedBridge = null;
                     return;
                 }
 
-                // GATE 2: Anti-Glissando / Normal Hand Movement Gate (تفکیک حرکت عادی دست از ضربه شلاقی مچ)
-                // Compute Whip Dominance Ratio: ratio of rotational wrist-whip speed to whole-hand translation speed
-                const whipDominance = this.whipSpeedDown / (this.vWrist.planarMag + 0.14);
-                const isNormalHandTranslation = (
-                    (this.vWrist.planarMag > config.travelLockThreshold && whipDominance < config.whipDominanceRatio) ||
-                    (Math.abs(this.vRel.x) > Math.abs(this.vRel.y) * 1.65 && this.vWrist.planarMag > 0.35)
+                // GATE 2: Anti-Glissando Horizontal Hand Translation Gate
+                // Blocks accidental glissandos when moving the hand sideways across bridges without a vertical strike
+                const verticalToHorizRatio = this.whipSpeedDown / (this.vWrist.horizMag + Math.abs(this.vTip.x) * 0.5 + 0.14);
+                const isSidewaysTranslation = (
+                    this.vWrist.horizMag > config.travelLockThreshold &&
+                    verticalToHorizRatio < config.whipDominanceRatio
                 );
 
-                if (isNormalHandTranslation) {
+                if (isSidewaysTranslation) {
                     this.state = 'TRAVEL_LOCKED';
                     this.peakWhipSpeed = 0;
+                    this.whipCandidateTarget = null;
                     this.lockedBridge = null;
                     return;
                 }
 
-                // GATE 3: Intentional Tremolo (RIZ_MODE) when wrist is stationary & oscillating rapidly
+                // GATE 3: Intentional Tremolo (RIZ_MODE)
                 if (this.isPinchRiz && this.hoveredTarget) {
                     this.state = 'RIZ_MODE';
                     if (!this.lockedBridge) this.lockedBridge = this.hoveredTarget;
                     if (Math.abs(this.hoveredTarget.kharak - this.lockedBridge.kharak) >= 2) {
                         this.lockedBridge = this.hoveredTarget;
                     }
-                    const rizInterval = Math.max(46, 82 - Math.min(34, this.vRel.mag * 22));
+                    const rizInterval = Math.max(46, 82 - Math.min(34, this.vTip.mag * 22));
                     if (nowMs - this.lastRizPulseTime >= rizInterval) {
-                        const rizVel = Math.min(0.95, Math.max(0.38, 0.48 + this.vRel.mag * 0.32));
+                        const rizVel = Math.min(0.95, Math.max(0.40, 0.50 + this.vTip.mag * 0.30));
                         triggerSantoorStrike(this.lockedBridge, rizVel, this.side, 'ریز پیوسته سه‌بعدی (3D Riz)');
                         this.lastRizPulseTime = nowMs;
                     }
@@ -1937,66 +2062,84 @@
                     this.lockedBridge = null;
                 }
 
-                // GATE 4: Rebound Hysteresis & Cooldown Gate (ناحیه مسلح‌سازی مجدد پس از ضربه)
+                // GATE 4: Rebound Hysteresis & Cooldown Gate
                 if (this.state === 'REBOUND') {
                     const elapsed = nowMs - this.lastStrikeTime;
                     const reboundUpDist = this.strikeApexY - this.tipPos.y;
-                    if (elapsed >= 42 && (reboundUpDist > 8.0 || this.whipSpeedDown < config.strikeThreshold * 0.32)) {
+                    if (elapsed >= 45 && (reboundUpDist > 5.0 || this.whipSpeedDown < config.strikeThreshold * 0.45)) {
                         this.state = 'ARMED';
                         this.peakWhipSpeed = 0;
+                        this.whipCandidateTarget = null;
                     } else {
                         return;
                     }
                 }
 
                 if (this.state === 'TRAVEL_LOCKED' || this.state === 'OPEN_RELEASED') {
-                    if (this.vWrist.planarMag < config.travelLockThreshold * 0.72) {
+                    if (this.vWrist.horizMag < config.travelLockThreshold * 0.78) {
                         this.state = 'ARMED';
                     } else {
                         return;
                     }
                 }
 
-                // GATE 5: Ballistic Wrist-Whip Impulse & Impact Deceleration Apex
+                // GATE 5: Dual-Trigger Ballistic Strike (String-Crossing OR Deceleration Apex with Target Lock)
                 if (this.state === 'ARMED') {
-                    // Must exceed strike velocity threshold AND exhibit a sharp downward rotational whip (whipDominance >= ratio)
                     if (
-                        this.whipSpeedDown > config.strikeThreshold &&
-                        whipDominance >= config.whipDominanceRatio * 0.85 &&
-                        this.whipAccel > 0.008
+                        this.whipSpeedDown >= config.strikeThreshold &&
+                        verticalToHorizRatio >= config.whipDominanceRatio * 0.80
                     ) {
                         this.state = 'WHIPPING';
                         this.peakWhipSpeed = this.whipSpeedDown;
                         this.whipStartTime = nowMs;
+                        this.whipCandidateTarget = this.hoveredTarget;
+
+                        // Immediate String-Line Crossing Check on the exact frame the whip starts!
+                        if (this.whipCandidateTarget && didCrossCorridorMidline(this.prevTipPos.y, this.tipPos.y, this.whipCandidateTarget.yMid)) {
+                            const normVelocity = Math.min(1.0, Math.max(0.28, this.peakWhipSpeed / (config.strikeThreshold * 2.2)));
+                            triggerSantoorStrike(this.whipCandidateTarget, normVelocity, this.side, 'ضربه شلاقی مچ (3D Whip Impact)');
+                            this.state = 'REBOUND';
+                            this.lastStrikeTime = nowMs;
+                            this.strikeApexY = this.tipPos.y;
+                            this.peakWhipSpeed = 0;
+                            this.whipCandidateTarget = null;
+                            return;
+                        }
                     }
                 } else if (this.state === 'WHIPPING') {
                     const whipDuration = nowMs - this.whipStartTime;
 
-                    // If downward motion drags on > 165ms without snapping, it's a slow lowering of the hand -> cancel without sound!
-                    if (whipDuration > 165) {
-                        this.state = 'REBOUND';
-                        this.lastStrikeTime = nowMs;
-                        this.strikeApexY = this.tipPos.y;
-                        this.peakWhipSpeed = 0;
-                        return;
-                    }
-
                     if (this.whipSpeedDown > this.peakWhipSpeed) {
                         this.peakWhipSpeed = this.whipSpeedDown;
                     }
+                    if (this.hoveredTarget) {
+                        this.whipCandidateTarget = this.hoveredTarget;
+                    }
 
-                    // Impact Apex occurs when the downward wrist-whip sharply decelerates at the string plane
-                    const hitApex = (this.whipSpeedDown <= this.peakWhipSpeed * 0.52) || (this.whipSpeedDown <= 0.06);
-                    if (hitApex && whipDuration >= 8) {
-                        const impactTarget = findSantoorTargetAt(this.tipPos.x, this.tipPos.y);
-                        if (impactTarget) {
-                            const normVelocity = Math.min(1.0, Math.max(0.20, this.peakWhipSpeed / (config.strikeThreshold * 2.5)));
-                            triggerSantoorStrike(impactTarget, normVelocity, this.side, 'ضربه شلاقی مچ (3D Whip Impact)');
+                    // Trigger Condition A: Mezrab tip crossed the string midline during high-speed downward whip
+                    const targetToCheck = this.hoveredTarget || this.whipCandidateTarget;
+                    const crossedLine = targetToCheck && didCrossCorridorMidline(this.prevTipPos.y, this.tipPos.y, targetToCheck.yMid);
+
+                    // Trigger Condition B: Downward whip reached deceleration apex
+                    const hitDecelApex = (this.whipSpeedDown <= this.peakWhipSpeed * 0.65) || (this.whipSpeedDown <= config.strikeThreshold * 0.5);
+
+                    if ((crossedLine || hitDecelApex) && whipDuration <= 185) {
+                        const finalTarget = this.hoveredTarget || this.whipCandidateTarget;
+                        if (finalTarget) {
+                            const normVelocity = Math.min(1.0, Math.max(0.25, this.peakWhipSpeed / (config.strikeThreshold * 2.2)));
+                            triggerSantoorStrike(finalTarget, normVelocity, this.side, 'ضربه شلاقی مچ (3D Whip Impact)');
                         }
                         this.state = 'REBOUND';
                         this.lastStrikeTime = nowMs;
                         this.strikeApexY = this.tipPos.y;
                         this.peakWhipSpeed = 0;
+                        this.whipCandidateTarget = null;
+                    } else if (whipDuration > 185) {
+                        this.state = 'REBOUND';
+                        this.lastStrikeTime = nowMs;
+                        this.strikeApexY = this.tipPos.y;
+                        this.peakWhipSpeed = 0;
+                        this.whipCandidateTarget = null;
                     }
                 }
             }
@@ -2007,17 +2150,21 @@
 
         /**
          * ============================================================================
-         * 6. TARGET LOOKUP, 3D STRING VIBRATION & IMPACT EFFECTS
+         * 6. TARGET LOOKUP, SEGMENT INTERSECTION & STRIKE EXECUTION
          * ============================================================================
          */
+        function didCrossCorridorMidline(prevY, curY, midY) {
+            return (prevY <= midY + 4 && curY >= midY - 4 && curY > prevY);
+        }
+
         function findSantoorTargetAt(screenX, screenY) {
             const { corridors } = appState.geom;
             if (!corridors || !corridors.length) return null;
 
             for (let i = 0; i < corridors.length; i++) {
                 const c = corridors[i];
-                if (screenY >= c.yTop - 6 && screenY <= c.yBottom + 6) {
-                    if (screenX < c.leftEdgeX - 18 || screenX > c.rightEdgeX + 18) return null;
+                if (screenY >= c.yTop - 7 && screenY <= c.yBottom + 7) {
+                    if (screenX < c.leftEdgeX - 20 || screenX > c.rightEdgeX + 20) return null;
 
                     let matchedZone = null;
                     if (screenX >= c.zones.zard.xMin) {
@@ -2032,7 +2179,6 @@
                     const maxSpan = Math.max(20, (c.rightEdgeX - c.leftEdgeX) * 0.32);
                     const bridgeProx = Math.max(0.08, Math.min(1.0, 1.0 - (distFromBridge / maxSpan)));
 
-                    // Compute exact 3D World X coordinate on the struck string
                     const normRowX = Math.max(0, Math.min(1, (screenX - c.leftEdgeX) / Math.max(1, c.rightEdgeX - c.leftEdgeX)));
                     const worldX = c.c3d.leftEdgeX + normRowX * (c.c3d.rightEdgeX - c.c3d.leftEdgeX);
 
@@ -2051,6 +2197,15 @@
                 }
             }
             return null;
+        }
+
+        /**
+         * Prevents fast strikes from skipping over a corridor between frames by testing the midpoint of the motion segment
+         */
+        function findSantoorTargetAlongSegment(x0, y0, x1, y1) {
+            const midX = (x0 + x1) * 0.5;
+            const midY = (y0 + y1) * 0.5;
+            return findSantoorTargetAt(midX, midY);
         }
 
         function triggerSantoorStrike(target, velocity, handSide = 'right', techniqueLabel = 'تک‌مضراب سه‌بعدی') {
@@ -2072,7 +2227,7 @@
                 bridgeProx: target.bridgeProx || 0.35
             });
 
-            // 1. Trigger 3D String Course Vibration in Three.js
+            // 1. Trigger 3D String Course Vibration
             const vibKey = `${target.zone}_${target.kharak}`;
             appState.stringVibrations[vibKey] = {
                 amp: Math.min(1.0, 0.28 + velocity * 0.72),
@@ -2080,37 +2235,27 @@
                 time: performance.now()
             };
 
-            // 2. Spawn 3D Shockwave Ring at the exact 3D Point of Impact on the Santoor
+            // 2. Spawn Pooled 3D Shockwave Ring (Zero-Allocation)
             if (santoorGroup) {
                 const ringColor = target.zone === 'zard' ? 0xfbbf24 : (target.zone === 'sefid' ? 0x38bdf8 : 0xf472b6);
-                const ringGeo = new THREE.RingGeometry(0.12, 0.26, 24);
-                ringGeo.rotateX(-Math.PI / 2);
-                const ringMat = new THREE.MeshBasicMaterial({
-                    color: ringColor,
-                    transparent: true,
-                    opacity: 0.95,
-                    side: THREE.DoubleSide
-                });
-                const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-                ringMesh.position.set(target.worldX || 0, SANTOOR_3D.stringSurfaceY + 0.04, target.worldZ || 0);
-                santoorGroup.add(ringMesh);
-                impactRings3D.push({ mesh: ringMesh, scale: 1.0, alpha: 0.95 });
+                spawnPooled3DImpactRing(target.worldX || target.worldBridgeX || 0, target.worldZ || 0, ringColor);
             }
 
-            // 3. Spawn 2D Luminous Sparks on the HUD overlay
+            // 3. Spawn 2D Luminous Sparks (Capped at 90 max particles to prevent lag)
             const px = target.impactX || target.bridgeX;
             const py = target.impactY || target.yMid;
-            const pCount = Math.floor(6 + velocity * 10);
+            const pCount = Math.floor(5 + velocity * 8);
             for (let i = 0; i < pCount; i++) {
+                if (appState.particles2D.length >= 90) appState.particles2D.shift();
                 const angle = Math.random() * Math.PI * 2;
-                const spd = 0.9 + Math.random() * 4.0 * velocity;
+                const spd = 0.9 + Math.random() * 3.8 * velocity;
                 appState.particles2D.push({
                     x: px,
                     y: py,
                     vx: Math.cos(angle) * spd,
                     vy: Math.sin(angle) * spd - 0.8,
                     life: 1.0,
-                    size: 1.8 + Math.random() * 2.4,
+                    size: 1.8 + Math.random() * 2.3,
                     color: target.zone === 'zard' ? '#fbbf24' : (target.zone === 'sefid' ? '#67e8f9' : '#f472b6')
                 });
             }
@@ -2119,6 +2264,7 @@
         }
 
         function spawnDampWaveEffect(x, y, zone) {
+            if (appState.dampWaves.length >= 12) appState.dampWaves.shift();
             appState.dampWaves.push({
                 x,
                 y,
@@ -2151,9 +2297,21 @@
          * ============================================================================
          */
         function update3DSceneAndRender(nowMs) {
+            // Decay pointer velocities smoothly to zero when the mouse stops moving
+            const pt = appState.pointer;
+            if (nowMs - pt.lastMoveTime > 24) {
+                pt.vx *= 0.72;
+                pt.vy *= 0.72;
+                if (Math.abs(pt.vx) < 0.01) pt.vx = 0;
+                if (Math.abs(pt.vy) < 0.01) pt.vy = 0;
+                if (pt.state === 'TRAVEL_LOCKED' && Math.abs(pt.vx) < appState.travelLockThreshold * 0.6) {
+                    pt.state = pt.isFistGripped ? 'ARMED' : 'OPEN_RELEASED';
+                }
+            }
+
             // 1. Determine Active Hovered Targets from Webcam Hands or 3D Pointer
             const activeHovers = [];
-            if (rightHandCtrl.active && (nowMs - rightHandCtrl.lastSeenTime < 650)) {
+            if (rightHandCtrl.active && (nowMs - rightHandCtrl.lastSeenTime < 220)) {
                 if (rightHandCtrl.hoveredTarget) {
                     activeHovers.push({
                         target: rightHandCtrl.hoveredTarget,
@@ -2166,7 +2324,7 @@
                 rightHandCtrl.active = false;
             }
 
-            if (leftHandCtrl.active && (nowMs - leftHandCtrl.lastSeenTime < 650)) {
+            if (leftHandCtrl.active && (nowMs - leftHandCtrl.lastSeenTime < 220)) {
                 if (leftHandCtrl.hoveredTarget) {
                     activeHovers.push({
                         target: leftHandCtrl.hoveredTarget,
@@ -2181,20 +2339,21 @@
 
             const usingPointerFallback = (!rightHandCtrl.active && !leftHandCtrl.active);
             let pointerTarget = null;
-            if (usingPointerFallback && appState.pointer.active) {
-                pointerTarget = findSantoorTargetAt(appState.pointer.x, appState.pointer.y);
+            if (usingPointerFallback && pt.active) {
+                pointerTarget = findSantoorTargetAt(pt.x, pt.y);
                 if (pointerTarget) {
                     activeHovers.push({
                         target: pointerTarget,
                         side: 'pointer',
-                        state: appState.pointer.state,
-                        isGripped: appState.pointer.isFistGripped
+                        state: pt.state,
+                        isGripped: pt.isFistGripped
                     });
                 }
             }
 
             // 2. Update 3D Corridor Highlights & 3D Kharak Bridge Emissive Glow
-            corridorPlanes3D.forEach(({ mesh, kharak }) => {
+            for (let i = 0; i < corridorPlanes3D.length; i++) {
+                const { mesh, kharak } = corridorPlanes3D[i];
                 const match = activeHovers.find(h => h.target.kharak === kharak);
                 if (match && appState.showCorridors) {
                     const isBlocked = (match.state === 'TRAVEL_LOCKED' || !match.isGripped);
@@ -2204,7 +2363,7 @@
                     mesh.material.color.setHex((kharak === 3 || kharak === 6) ? 0xfde68a : 0xd97706);
                     mesh.material.opacity = appState.showCorridors ? ((kharak === 3 || kharak === 6) ? 0.09 : 0.015) : 0.0;
                 }
-            });
+            }
 
             for (let i = 0; i < 9; i++) {
                 const kNum = i + 1;
@@ -2227,23 +2386,35 @@
                 }
             }
 
-            // 3. Update 144 3D Strings Standing-Wave Vibration Geometry
-            Object.keys(stringCourses3D).forEach(courseKey => {
-                const lines = stringCourses3D[courseKey];
+            // 3. Update 144 3D Strings Standing-Wave Vibration Geometry (Only active courses touched)
+            const vibKeys = Object.keys(appState.stringVibrations);
+            for (let vIdx = 0; vIdx < vibKeys.length; vIdx++) {
+                const courseKey = vibKeys[vIdx];
                 const vib = appState.stringVibrations[courseKey];
-                let currentAmp = 0;
+                const lines = stringCourses3D[courseKey];
+                if (!vib || !lines) continue;
 
-                if (vib) {
-                    const ageSec = (nowMs - vib.time) / 1000;
-                    currentAmp = vib.amp * Math.exp(-ageSec * 1.55);
-                    if (currentAmp < 0.015) {
-                        delete appState.stringVibrations[courseKey];
-                        currentAmp = 0;
+                const ageSec = (nowMs - vib.time) / 1000;
+                const currentAmp = vib.amp * Math.exp(-ageSec * 1.65);
+
+                if (currentAmp < 0.015) {
+                    // Reset string geometry back to straight line once vibration finishes
+                    for (let sIdx = 0; sIdx < lines.length; sIdx++) {
+                        const line = lines[sIdx];
+                        const posAttr = line.geometry.attributes.position;
+                        const { xStart, xEnd, zLine, segCount, baseColor } = line.userData;
+                        for (let k = 0; k <= segCount; k++) {
+                            const u = k / segCount;
+                            posAttr.setXYZ(k, xStart + (xEnd - xStart) * u, SANTOOR_3D.stringSurfaceY, zLine);
+                        }
+                        posAttr.needsUpdate = true;
+                        line.material.color.setHex(baseColor);
+                        line.userData.wasVibrating = false;
                     }
-                }
-
-                lines.forEach((line, sIdx) => {
-                    if (currentAmp > 0.015) {
+                    delete appState.stringVibrations[courseKey];
+                } else {
+                    for (let sIdx = 0; sIdx < lines.length; sIdx++) {
+                        const line = lines[sIdx];
                         const posAttr = line.geometry.attributes.position;
                         const { xStart, xEnd, zLine, segCount } = line.userData;
                         const phase = nowMs * 0.08 + sIdx * 1.1;
@@ -2256,37 +2427,27 @@
                         }
                         posAttr.needsUpdate = true;
                         line.material.color.setHex(0xfef08a);
-                    } else if (line.userData.wasVibrating) {
-                        const posAttr = line.geometry.attributes.position;
-                        const { xStart, xEnd, zLine, segCount, baseColor } = line.userData;
-                        for (let k = 0; k <= segCount; k++) {
-                            const u = k / segCount;
-                            posAttr.setXYZ(k, xStart + (xEnd - xStart) * u, SANTOOR_3D.stringSurfaceY, zLine);
-                        }
-                        posAttr.needsUpdate = true;
-                        line.material.color.setHex(baseColor);
+                        line.userData.wasVibrating = true;
                     }
-                    line.userData.wasVibrating = (currentAmp > 0.015);
-                });
-            });
+                }
+            }
 
-            // 4. Update 3D Shockwave Rings on Soundboard
-            for (let i = impactRings3D.length - 1; i >= 0; i--) {
-                const ir = impactRings3D[i];
+            // 4. Update Pooled 3D Shockwave Rings on Soundboard
+            for (let i = activeImpactRings3D.length - 1; i >= 0; i--) {
+                const ir = activeImpactRings3D[i];
                 ir.scale += 0.22;
-                ir.alpha -= 0.045;
+                ir.alpha -= 0.048;
                 if (ir.alpha <= 0) {
-                    santoorGroup.remove(ir.mesh);
-                    ir.mesh.geometry.dispose();
-                    ir.mesh.material.dispose();
-                    impactRings3D.splice(i, 1);
+                    ir.active = false;
+                    ir.mesh.visible = false;
+                    activeImpactRings3D.splice(i, 1);
                 } else {
                     ir.mesh.scale.set(ir.scale, ir.scale, 1);
                     ir.mesh.material.opacity = ir.alpha;
                 }
             }
 
-            // 5. Update 3D Hand Skeletons & 6-DOF 3D Mezrabs in Three.js Space
+            // 5. Update 3D Hand Skeletons & 6-DOF 3D Mezrabs
             update3DHandAndMezrabMeshes(nowMs, usingPointerFallback, pointerTarget);
 
             // Render Three.js WebGL Scene
@@ -2294,7 +2455,7 @@
                 renderer.render(scene, camera);
             }
 
-            // 6. Render Synchronized 2D HUD Overlay (Persian Bridge Badges, Fist Progress Rings, Particles)
+            // 6. Render Synchronized 2D HUD Overlay
             render2DHudOverlay(nowMs, usingPointerFallback, pointerTarget);
 
             // 7. Update Telemetry DOM Cards
@@ -2311,7 +2472,6 @@
                     return;
                 }
 
-                // Update 3D Articulated Hand Skeleton
                 skel.group.visible = true;
                 for (let i = 0; i < 21; i++) {
                     skel.joints[i].position.copy(ctrl.worldLandmarks[i]);
@@ -2330,15 +2490,13 @@
                 }
                 skel.bonesLine.geometry.attributes.position.needsUpdate = true;
 
-                // Update 3D Mezrab Attachment & 6-DOF Pose based on Fist Grip State!
                 mezrabGroup.visible = true;
                 mezrabGroup.position.copy(ctrl.worldRingPos);
                 mezrabGroup.quaternion.copy(ctrl.quaternion3D);
 
-                const { shaftMesh, fingerRing, tipMesh, tipLight } = mezrabGroup.userData;
+                const { shaftMesh, tipMesh, tipLight } = mezrabGroup.userData;
                 if (ctrl.isGripped) {
-                    // Fist is closed: Mezrab is firmly locked in the user's hand at full scale
-                    mezrabGroup.scale.lerp(new THREE.Vector3(1, 1, 1), 0.35);
+                    mezrabGroup.scale.lerp(_vecOne, 0.35);
                     shaftMesh.material.opacity = 1.0;
                     shaftMesh.material.transparent = false;
                     tipLight.intensity = ctrl.state === 'TRAVEL_LOCKED' ? 0.25 : 0.85;
@@ -2346,8 +2504,7 @@
                     tipMesh.material.color.setHex(tipHex);
                     tipMesh.material.emissive.setHex(tipHex);
                 } else {
-                    // Hand is open: Mezrab is released / translucent standby
-                    mezrabGroup.scale.lerp(new THREE.Vector3(0.55, 0.55, 0.55), 0.25);
+                    mezrabGroup.scale.lerp(_vecOpenScale, 0.25);
                     shaftMesh.material.transparent = true;
                     shaftMesh.material.opacity = 0.22;
                     tipLight.intensity = 0.05;
@@ -2358,7 +2515,6 @@
                 updateSingleHand3D(rightHandCtrl, rightHandSkeleton3D, rightMezrab3D);
                 updateSingleHand3D(leftHandCtrl, leftHandSkeleton3D, leftMezrab3D);
             } else {
-                // Interactive 3D Mouse/Touch Virtual Hand & Mezrab Mode
                 rightHandSkeleton3D.group.visible = false;
                 leftHandSkeleton3D.group.visible = false;
                 leftMezrab3D.visible = false;
@@ -2366,7 +2522,6 @@
                 rightMezrab3D.visible = true;
                 const pt = appState.pointer;
 
-                // Map pointer screen position to 3D world position over the Santoor
                 let wx = ((pt.x / Math.max(1, arCanvas.width)) - 0.5) * 28.0;
                 let wz = ((pt.y / Math.max(1, arCanvas.height)) - 0.54) * 16.0;
                 if (pointerTarget) {
@@ -2374,7 +2529,6 @@
                     wz = pointerTarget.worldZ;
                 }
 
-                // Animate downward 3D wrist-whip strike when clicked or during Riz tremolo
                 let whipDipY = 0;
                 let whipPitchExtra = 0;
                 if (pt.whipAnimPhase > 0) {
@@ -2392,7 +2546,6 @@
                 pt.worldZ += (wz - pt.worldZ) * 0.45;
                 pt.worldY += (hoverHeight - pt.worldY) * 0.50;
 
-                // Smooth 3D rotation of the Mezrab following hand velocity & position on the Santoor
                 const targetYaw = THREE.MathUtils.clamp(-pt.worldX * 1.3 - pt.vx * 12, -32, 32);
                 const targetRoll = THREE.MathUtils.clamp(pt.vx * 18 + (appState.isWoodMezrab ? 58 : 0), -65, 65);
                 const targetPitch = THREE.MathUtils.clamp(-14 + whipPitchExtra - Math.max(-12, Math.min(18, pt.vy * 14)), -42, 22);
@@ -2401,25 +2554,25 @@
                 pt.rollDeg += (targetRoll - pt.rollDeg) * 0.32;
                 pt.pitchDeg += (targetPitch - pt.pitchDeg) * 0.45;
 
-                const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+                _scratchEuler.set(
                     THREE.MathUtils.degToRad(pt.pitchDeg),
                     THREE.MathUtils.degToRad(pt.yawDeg),
                     THREE.MathUtils.degToRad(pt.rollDeg),
                     'YXZ'
-                ));
-                rightMezrab3D.quaternion.copy(q);
+                );
+                _scratchQuat.setFromEuler(_scratchEuler);
+                rightMezrab3D.quaternion.copy(_scratchQuat);
 
-                // Position the Mezrab Ring so that the Mezrab Tip lands right at (pt.worldX, pt.worldY - 1.1, pt.worldZ)
-                const tipLocal = rightMezrab3D.userData.tipLocalVec.clone().applyQuaternion(q);
+                _scratchVecA.copy(rightMezrab3D.userData.tipLocalVec).applyQuaternion(_scratchQuat);
                 rightMezrab3D.position.set(
-                    pt.worldX - tipLocal.x,
-                    pt.worldY - tipLocal.y,
-                    pt.worldZ - tipLocal.z
+                    pt.worldX - _scratchVecA.x,
+                    pt.worldY - _scratchVecA.y,
+                    pt.worldZ - _scratchVecA.z
                 );
 
                 const { shaftMesh, tipMesh, tipLight } = rightMezrab3D.userData;
                 if (pt.isFistGripped) {
-                    rightMezrab3D.scale.lerp(new THREE.Vector3(1, 1, 1), 0.35);
+                    rightMezrab3D.scale.lerp(_vecOne, 0.35);
                     shaftMesh.material.transparent = false;
                     shaftMesh.material.opacity = 1.0;
                     const isLocked = pt.state === 'TRAVEL_LOCKED';
@@ -2428,7 +2581,7 @@
                     tipMesh.material.emissive.setHex(hex);
                     tipLight.intensity = isLocked ? 0.25 : 0.85;
                 } else {
-                    rightMezrab3D.scale.lerp(new THREE.Vector3(0.6, 0.6, 0.6), 0.25);
+                    rightMezrab3D.scale.lerp(_vecOpenScale, 0.25);
                     shaftMesh.material.transparent = true;
                     shaftMesh.material.opacity = 0.25;
                     tipLight.intensity = 0.08;
@@ -2441,19 +2594,17 @@
             const H = arCanvas.height;
             ctx.clearRect(0, 0, W, H);
 
-            // 1. Draw Crisp Projected Persian Note Badges next to the 18 3D Kharaks
             if (appState.showCorridors) {
                 const { corridors } = appState.geom;
-                corridors.forEach(c => {
+                for (let i = 0; i < corridors.length; i++) {
+                    const c = corridors[i];
                     drawProjectedBridgeBadge(c.zardBridgeScreen.x, c.zardBridgeScreen.y, c.kharak, c.zones.zard.noteName, 'zard');
                     drawProjectedBridgeBadge(c.sefidBridgeScreen.x, c.sefidBridgeScreen.y, c.kharak, c.zones.sefid.noteName, 'sefid');
-                });
+                }
             }
 
-            // 2. Draw Impact Sparks & Palm Damping Waves
             drawParticlesAndWaves();
 
-            // 3. Draw 3D Mezrab HUD Reticle & Fist Grip Indicator for Active Webcam Hands
             if (rightHandCtrl.active) {
                 drawHandHudReticle(rightHandCtrl, '#fbbf24', 'دست راست');
             }
@@ -2461,7 +2612,6 @@
                 drawHandHudReticle(leftHandCtrl, '#38bdf8', 'دست چپ');
             }
 
-            // 4. Draw Pointer 3D HUD Reticle when using Mouse/Touch
             if (usingPointerFallback && appState.pointer.active) {
                 drawPointerHudReticle(appState.pointer, pointerTarget);
             }
@@ -2473,7 +2623,6 @@
             const bx = sx + offsetX;
             const by = sy;
 
-            // Kharak number circle on the 3D bridge crown
             ctx.fillStyle = 'rgba(15, 9, 5, 0.78)';
             ctx.beginPath();
             ctx.arc(sx, sy + 2, 8.5, 0, Math.PI * 2);
@@ -2488,13 +2637,11 @@
             ctx.textBaseline = 'middle';
             ctx.fillText(String(kharakNum), sx, sy + 2.5);
 
-            // Note name pill badge
             const shortNote = noteName.split(' ')[0] + (noteName.includes('کُرُن') ? '𝄳' : '');
             const badgeW = 46;
             const badgeH = 16;
             ctx.fillStyle = 'rgba(14, 9, 6, 0.80)';
-            ctx.beginPath();
-            ctx.roundRect(bx - badgeW * 0.5, by - badgeH * 0.5, badgeW, badgeH, 4);
+            drawRoundRectPath(ctx, bx - badgeW * 0.5, by - badgeH * 0.5, badgeW, badgeH, 4);
             ctx.fill();
             ctx.strokeStyle = zoneType === 'zard' ? 'rgba(251, 191, 36, 0.45)' : 'rgba(56, 189, 248, 0.45)';
             ctx.lineWidth = 0.9;
@@ -2511,14 +2658,12 @@
             const isLocked = state === 'TRAVEL_LOCKED';
             ctx.save();
 
-            // Draw Fist Grip Progress Arc around the hand's grip ring
             ctx.beginPath();
             ctx.arc(ringPos.x, ringPos.y, 18, -Math.PI * 0.5, -Math.PI * 0.5 + Math.PI * 2 * gripCurlScore);
             ctx.strokeStyle = isGripped ? '#34d399' : '#94a3b8';
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // Draw Precision Target Crosshair at 3D Mezrab Tip
             const r = isGripped ? 10 : 7;
             ctx.beginPath();
             ctx.arc(tipPos.x, tipPos.y, r, 0, Math.PI * 2);
@@ -2526,15 +2671,13 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // State & Fist Status Pill above Mezrab Tip
             const statusText = !isGripped
                 ? `${labelFa}: دست باز (مشت کنید)`
-                : (isLocked ? `${labelFa}: حرکت عادی (قفل صدا)` : `${labelFa}: مضراب در مشت (${state})`);
+                : (isLocked ? `${labelFa}: حرکت افقی (قفل صدا)` : `${labelFa}: مضراب در مشت (${state})`);
             ctx.font = 'bold 10px Vazirmatn, sans-serif';
             const tw = ctx.measureText(statusText).width + 14;
             ctx.fillStyle = 'rgba(12, 8, 5, 0.86)';
-            ctx.beginPath();
-            ctx.roundRect(tipPos.x - tw * 0.5, tipPos.y - 34, tw, 18, 5);
+            drawRoundRectPath(ctx, tipPos.x - tw * 0.5, tipPos.y - 34, tw, 18, 5);
             ctx.fill();
             ctx.fillStyle = !isGripped ? '#cbd5e1' : (isLocked ? '#fca5a5' : '#fef08a');
             ctx.textAlign = 'center';
@@ -2564,13 +2707,12 @@
             const tag = !isGripped
                 ? 'دست باز (کلید F = مشت کردن مضراب)'
                 : (isLocked
-                    ? 'حرکت عادی دست (بی‌صدا)'
-                    : (target ? `خرک ${target.kharak} (${target.noteName.split(' ')[0]})` : 'آماده ضربه شلاقی'));
+                    ? 'حرکت افقی دست (بی‌صدا)'
+                    : (target ? `خرک ${target.kharak} (${target.noteName.split(' ')[0]})` : 'آماده ضربه مضراب'));
             ctx.font = 'bold 10px Vazirmatn, sans-serif';
             const w = ctx.measureText(tag).width + 14;
             ctx.fillStyle = 'rgba(12, 8, 5, 0.84)';
-            ctx.beginPath();
-            ctx.roundRect(pt.x - w * 0.5, pt.y - 30, w, 17, 5);
+            drawRoundRectPath(ctx, pt.x - w * 0.5, pt.y - 30, w, 17, 5);
             ctx.fill();
             ctx.fillStyle = !isGripped ? '#cbd5e1' : (isLocked ? '#fca5a5' : '#fef08a');
             ctx.textAlign = 'center';
@@ -2585,7 +2727,7 @@
                 p.x += p.vx;
                 p.y += p.vy;
                 p.vy += 0.09;
-                p.life -= 0.034;
+                p.life -= 0.036;
                 if (p.life <= 0) {
                     appState.particles2D.splice(i, 1);
                     continue;
@@ -2593,8 +2735,6 @@
                 ctx.save();
                 ctx.globalAlpha = p.life;
                 ctx.fillStyle = p.color;
-                ctx.shadowColor = p.color;
-                ctx.shadowBlur = 8;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
@@ -2691,33 +2831,44 @@
 
         /**
          * ============================================================================
-         * 8. MEDIAPIPE HANDS & WEBCAM STREAM INTEGRATION
+         * 8. NON-BLOCKING, FRAME-LOCKED MEDIAPIPE HANDS & WEBCAM STREAM INTEGRATION
          * ============================================================================
          */
         let handsInstance = null;
         let cameraInstance = null;
+        let isProcessingHandFrame = false;
 
         async function toggleWebcamAR() {
+            if (appState.isCameraInitializing) return;
+
             const btnText = document.getElementById('cameraToggleText');
             const statusBadge = document.getElementById('camStatusBadge');
 
             if (appState.cameraActive) {
-                if (cameraInstance && cameraInstance.stop) {
-                    await cameraInstance.stop();
-                }
                 appState.cameraActive = false;
+                isProcessingHandFrame = false;
+                if (cameraInstance && cameraInstance.stop) {
+                    try { await cameraInstance.stop(); } catch (e) {}
+                }
+                if (videoEl.srcObject) {
+                    try {
+                        videoEl.srcObject.getTracks().forEach(t => t.stop());
+                        videoEl.srcObject = null;
+                    } catch (e) {}
+                }
                 videoEl.classList.remove('ar-visible');
                 rightHandCtrl.active = false;
                 leftHandCtrl.active = false;
                 btnText.textContent = 'فعال‌سازی وب‌کم AR';
-                statusBadge.textContent = 'موتور سه‌بعدی WebGL + تشخیص مشت';
+                statusBadge.textContent = 'موتور سه‌بعدی WebGL + تشخیص دقیق ضربه';
                 showToast('وب‌کم غیرفعال شد. اکنون در حالت مضراب سه‌بعدی ماوس/لمسی هستید.');
                 return;
             }
 
             try {
+                appState.isCameraInitializing = true;
                 audioEngine.init();
-                btnText.textContent = 'در حال راه‌اندازی ردیاب سه‌بعدی دست...';
+                btnText.textContent = 'در حال راه‌اندازی وب‌کم...';
 
                 if (!handsInstance) {
                     handsInstance = new Hands({
@@ -2726,32 +2877,43 @@
                     handsInstance.setOptions({
                         maxNumHands: 2,
                         modelComplexity: 1,
-                        minDetectionConfidence: 0.65,
-                        minTrackingConfidence: 0.65
+                        minDetectionConfidence: 0.60,
+                        minTrackingConfidence: 0.60
                     });
                     handsInstance.onResults(onMediaPipeHandsResults);
                 }
 
                 cameraInstance = new Camera(videoEl, {
                     onFrame: async () => {
-                        if (appState.cameraActive && handsInstance) {
+                        // Frame-lock mutex prevents overlapping WASM calls and eliminates tab freezes
+                        if (!appState.cameraActive || !handsInstance || isProcessingHandFrame) return;
+                        if (videoEl.readyState < 2) return;
+                        isProcessingHandFrame = true;
+                        try {
                             await handsInstance.send({ image: videoEl });
+                        } catch (e) {
+                            console.warn('MediaPipe frame skipped:', e);
+                        } finally {
+                            isProcessingHandFrame = false;
                         }
                     },
-                    width: 1280,
-                    height: 720
+                    width: 960,
+                    height: 540
                 });
 
                 await cameraInstance.start();
                 appState.cameraActive = true;
                 videoEl.classList.add('ar-visible');
                 btnText.textContent = 'توقف وب‌کم AR';
-                statusBadge.textContent = 'ردیابی سه‌بعدی دست و مشت فعال (Live 6-DOF)';
-                showToast('وب‌کم فعال شد! دست خود را مشت کنید تا مضراب سه‌بعدی در دستتان قفل شود و با ضربه شلاقی مچ بنوازید.');
+                statusBadge.textContent = 'ردیابی سه‌بعدی دست و مشت فعال (بدون لگ)';
+                showToast('وب‌کم فعال شد! دست خود را مشت کنید تا مضراب سه‌بعدی در دستتان قفل شود.');
             } catch (err) {
                 console.error('Camera initialization error:', err);
+                appState.cameraActive = false;
                 btnText.textContent = 'فعال‌سازی وب‌کم AR';
                 showToast('دسترسی به وب‌کم امکان‌پذیر نشد. می‌توانید با مضراب سه‌بعدی ماوس و کیبورد بنوازید.');
+            } finally {
+                appState.isCameraInitializing = false;
             }
         }
 
@@ -2760,23 +2922,36 @@
             const W = arCanvas.width;
             const H = arCanvas.height;
 
-            if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+            const handsList = results.multiHandLandmarks || [];
+            if (handsList.length === 0) {
                 return;
             }
 
-            for (let i = 0; i < results.multiHandLandmarks.length; i++) {
-                const lm = results.multiHandLandmarks[i];
-                const mirroredWristX = (1.0 - lm[0].x) * W;
-                const label = results.multiHandedness?.[i]?.label || '';
-                const isRightSide = label ? (label === 'Left') : (mirroredWristX >= W * 0.5);
+            const config = {
+                fistGripThreshold: appState.fistGripThreshold,
+                strikeThreshold: appState.strikeThreshold,
+                travelLockThreshold: appState.travelLockThreshold,
+                whipDominanceRatio: appState.whipDominanceRatio
+            };
 
+            // Disambiguate left vs right hand cleanly even if MediaPipe mislabels when two hands are visible
+            if (handsList.length === 2) {
+                const x0 = (1.0 - handsList[0][0].x) * W;
+                const x1 = (1.0 - handsList[1][0].x) * W;
+                if (x0 >= x1) {
+                    rightHandCtrl.updateFromMediaPipe(handsList[0], W, H, nowMs, config);
+                    leftHandCtrl.updateFromMediaPipe(handsList[1], W, H, nowMs, config);
+                } else {
+                    rightHandCtrl.updateFromMediaPipe(handsList[1], W, H, nowMs, config);
+                    leftHandCtrl.updateFromMediaPipe(handsList[0], W, H, nowMs, config);
+                }
+            } else {
+                const lm = handsList[0];
+                const mirroredWristX = (1.0 - lm[0].x) * W;
+                const label = results.multiHandedness?.[0]?.label || '';
+                const isRightSide = label ? (label === 'Left') : (mirroredWristX >= W * 0.5);
                 const ctrl = isRightSide ? rightHandCtrl : leftHandCtrl;
-                ctrl.updateFromMediaPipe(lm, W, H, nowMs, {
-                    fistGripThreshold: appState.fistGripThreshold,
-                    strikeThreshold: appState.strikeThreshold,
-                    travelLockThreshold: appState.travelLockThreshold,
-                    whipDominanceRatio: appState.whipDominanceRatio
-                });
+                ctrl.updateFromMediaPipe(lm, W, H, nowMs, config);
             }
         }
 
@@ -2785,6 +2960,8 @@
          * 9. INTERACTIVE 3D POINTER KINEMATICS, TOMBAK SEQUENCER & UI CONTROLS
          * ============================================================================
          */
+        let activeDemoTimers = [];
+
         function togglePointerFistMode(forceState) {
             const pt = appState.pointer;
             pt.isFistGripped = typeof forceState === 'boolean' ? forceState : !pt.isFistGripped;
@@ -2821,7 +2998,7 @@
             window.addEventListener('resize', resizeStage);
             resizeStage();
 
-            // Pointer Down: Strike or Riz if Fist is Gripped; if Hand is Open, perform Palm Damping!
+            // Pointer Down: Instant strike or Riz when Fist is Gripped; Palm Damping when Open
             arCanvas.addEventListener('pointerdown', (e) => {
                 audioEngine.init();
                 const pt = appState.pointer;
@@ -2847,10 +3024,12 @@
                 } else if (target) {
                     pt.whipAnimPhase = 1.0;
                     pt.state = 'WHIPPING';
-                    triggerSantoorStrike(target, 0.86, e.clientX >= arCanvas.width * 0.5 ? 'right' : 'left', 'ضربه شلاقی مضراب سه‌بعدی');
+                    pt.lastStrikeTime = performance.now();
+                    pt.strikeApexY = e.clientY;
+                    triggerSantoorStrike(target, 0.86, e.clientX >= arCanvas.width * 0.5 ? 'right' : 'left', 'ضربه مستقیم مضراب سه‌بعدی');
                     setTimeout(() => {
-                        if (!pt.isRizDown) pt.state = 'ARMED';
-                    }, 110);
+                        if (!pt.isRizDown && pt.isFistGripped) pt.state = 'ARMED';
+                    }, 95);
                 }
             });
 
@@ -2858,18 +3037,20 @@
                 if (e.target === arCanvas) e.preventDefault();
             });
 
-            // Pointer Move: 3D Mezrab follows hand; discriminates normal horizontal travel from sharp downward whip!
+            // Pointer Move: Accurate velocity calculation across high-polling mice & string-crossing flick strikes
             arCanvas.addEventListener('pointermove', (e) => {
                 const nowMs = performance.now();
                 const pt = appState.pointer;
-                const dt = Math.min(60, Math.max(4, nowMs - (pt.lastMoveTime || (nowMs - 16))));
+                const rawDt = nowMs - (pt.lastMoveTime || (nowMs - 16));
+                if (rawDt < 2) return; // Ignore sub-2ms duplicate high-DPI polling events
 
+                const dt = Math.min(60, rawDt);
                 const rawVx = (e.clientX - pt.x) / dt;
                 const rawVy = (e.clientY - pt.y) / dt;
 
                 pt.prevVy = pt.vy;
-                pt.vx = pt.vx * 0.4 + rawVx * 0.6;
-                pt.vy = pt.vy * 0.4 + rawVy * 0.6;
+                pt.vx = pt.vx * 0.35 + rawVx * 0.65;
+                pt.vy = pt.vy * 0.35 + rawVy * 0.65;
                 pt.prevX = pt.x;
                 pt.prevY = pt.y;
                 pt.x = e.clientX;
@@ -2882,54 +3063,74 @@
                     return;
                 }
                 if (pt.isRizDown) {
+                    const currentHover = findSantoorTargetAt(pt.x, pt.y);
+                    if (currentHover) pt.lockedTarget = currentHover;
                     pt.state = 'RIZ_MODE';
                     return;
                 }
 
-                // Discriminate Horizontal/Normal Cursor Travel vs. Intentional Vertical Downward Wrist Whip
                 const absVx = Math.abs(pt.vx);
                 const downwardVy = Math.max(0, pt.vy);
-                const whipRatio = downwardVy / (absVx + 0.15);
+                const whipRatio = downwardVy / (absVx + 0.14);
 
-                if (absVx > appState.travelLockThreshold && whipRatio < appState.whipDominanceRatio) {
+                // Horizontal travel lock
+                if (absVx > appState.travelLockThreshold * 1.15 && whipRatio < appState.whipDominanceRatio) {
                     pt.state = 'TRAVEL_LOCKED';
                     pt.peakWhipSpeed = 0;
+                    pt.whipCandidateTarget = null;
                     return;
                 }
 
                 if (pt.state === 'REBOUND') {
-                    if (nowMs - pt.lastStrikeTime > 55 && (pt.strikeApexY - pt.y > 8 || downwardVy < appState.strikeThreshold * 0.35)) {
+                    if (nowMs - pt.lastStrikeTime > 55 && (pt.strikeApexY - pt.y > 6 || downwardVy < appState.strikeThreshold * 0.4)) {
                         pt.state = 'ARMED';
                         pt.peakWhipSpeed = 0;
+                        pt.whipCandidateTarget = null;
                     }
                     return;
                 }
 
-                // Ballistic downward flick strike detection (only when whipping sharply downward onto a bridge and stopping)
-                if (downwardVy > appState.strikeThreshold * 1.45 && whipRatio >= appState.whipDominanceRatio * 1.15) {
+                const hovered = findSantoorTargetAt(pt.x, pt.y) || findSantoorTargetAlongSegment(pt.prevX, pt.prevY, pt.x, pt.y);
+
+                // Downward flick-whip detection with immediate corridor crossing support
+                if (downwardVy > appState.strikeThreshold * 1.25 && whipRatio >= appState.whipDominanceRatio) {
                     if (pt.state !== 'WHIPPING') {
                         pt.state = 'WHIPPING';
                         pt.whipStartTime = nowMs;
                         pt.peakWhipSpeed = downwardVy;
-                    } else if (downwardVy > pt.peakWhipSpeed) {
-                        pt.peakWhipSpeed = downwardVy;
+                        pt.whipCandidateTarget = hovered;
+                    } else {
+                        if (downwardVy > pt.peakWhipSpeed) pt.peakWhipSpeed = downwardVy;
+                        if (hovered) pt.whipCandidateTarget = hovered;
                     }
-                } else if (pt.state === 'WHIPPING') {
-                    const dur = nowMs - pt.whipStartTime;
-                    if (dur >= 10 && dur <= 145 && downwardVy <= pt.peakWhipSpeed * 0.45) {
-                        const impactTarget = findSantoorTargetAt(pt.x, pt.y);
-                        if (impactTarget) {
-                            const vel = Math.min(1.0, Math.max(0.25, pt.peakWhipSpeed / (appState.strikeThreshold * 2.8)));
-                            pt.whipAnimPhase = 1.0;
-                            triggerSantoorStrike(impactTarget, vel, 'right', 'ضربه شلاقی حرکت دست (Flick Whip)');
-                        }
+
+                    const checkTarget = hovered || pt.whipCandidateTarget;
+                    if (checkTarget && didCrossCorridorMidline(pt.prevY, pt.y, checkTarget.yMid)) {
+                        const vel = Math.min(1.0, Math.max(0.30, pt.peakWhipSpeed / (appState.strikeThreshold * 2.5)));
+                        pt.whipAnimPhase = 1.0;
+                        triggerSantoorStrike(checkTarget, vel, pt.x >= arCanvas.width * 0.5 ? 'right' : 'left', 'ضربه شلاقی حرکت دست (Flick Whip)');
                         pt.state = 'REBOUND';
                         pt.lastStrikeTime = nowMs;
                         pt.strikeApexY = pt.y;
                         pt.peakWhipSpeed = 0;
-                    } else if (dur > 145) {
+                        pt.whipCandidateTarget = null;
+                    }
+                } else if (pt.state === 'WHIPPING') {
+                    const dur = nowMs - pt.whipStartTime;
+                    const finalTarget = hovered || pt.whipCandidateTarget;
+                    if (dur >= 8 && dur <= 160 && finalTarget && downwardVy <= pt.peakWhipSpeed * 0.6) {
+                        const vel = Math.min(1.0, Math.max(0.28, pt.peakWhipSpeed / (appState.strikeThreshold * 2.5)));
+                        pt.whipAnimPhase = 1.0;
+                        triggerSantoorStrike(finalTarget, vel, pt.x >= arCanvas.width * 0.5 ? 'right' : 'left', 'ضربه شلاقی حرکت دست (Flick Whip)');
+                        pt.state = 'REBOUND';
+                        pt.lastStrikeTime = nowMs;
+                        pt.strikeApexY = pt.y;
+                        pt.peakWhipSpeed = 0;
+                        pt.whipCandidateTarget = null;
+                    } else if (dur > 160) {
                         pt.state = 'ARMED';
                         pt.peakWhipSpeed = 0;
+                        pt.whipCandidateTarget = null;
                     }
                 } else {
                     pt.state = 'ARMED';
@@ -2945,10 +3146,10 @@
             // Continuous Riz loop
             setInterval(() => {
                 if (appState.pointer.isRizDown && appState.pointer.lockedTarget && appState.pointer.isFistGripped) {
-                    const vel = 0.66 + (Math.random() - 0.5) * 0.20;
+                    const vel = 0.66 + (Math.random() - 0.5) * 0.18;
                     triggerSantoorStrike(appState.pointer.lockedTarget, vel, 'right', 'ریز پیوسته سه‌بعدی (3D Riz)');
                 }
-            }, 56);
+            }, 58);
 
             // Keyboard Shortcuts
             window.addEventListener('keydown', (e) => {
@@ -3002,7 +3203,7 @@
 
             // Header UI Controls
             document.getElementById('cameraViewSelect').addEventListener('change', (e) => {
-                applyCameraPreset(e.target.value, false);
+                applyCameraPreset(e.target.value);
                 recomputeSantoorGeometry();
             });
 
@@ -3036,7 +3237,6 @@
 
             document.getElementById('cameraToggleBtn').addEventListener('click', toggleWebcamAR);
 
-            // Settings Drawer
             const drawer = document.getElementById('settingsDrawer');
             document.getElementById('settingsToggleBtn').addEventListener('click', () => {
                 drawer.classList.toggle('hidden');
@@ -3045,7 +3245,6 @@
                 drawer.classList.add('hidden');
             });
 
-            // Minimize HUD
             const hudBody = document.getElementById('hudBodyContent');
             document.getElementById('minimizeHudBtn').addEventListener('click', (e) => {
                 const isHidden = hudBody.classList.toggle('hidden');
@@ -3135,7 +3334,6 @@
             // Demo Chaharmazrab / Arpeggio Player
             document.getElementById('demoPlayBtn').addEventListener('click', playPersianChaharmazrabDemo);
 
-            // Tombak Sequencer
             setupTombakSequencer();
         }
 
@@ -3196,6 +3394,10 @@
 
         function playPersianChaharmazrabDemo() {
             audioEngine.init();
+            // Clear any running demo timers so multiple clicks never overlap or hang
+            activeDemoTimers.forEach(id => clearTimeout(id));
+            activeDemoTimers = [];
+
             const seq = [
                 { k: 3, z: 'zard', v: 0.92, d: 0 },
                 { k: 3, z: 'sefid', v: 0.78, d: 130 },
@@ -3212,7 +3414,7 @@
             ];
 
             seq.forEach(step => {
-                setTimeout(() => {
+                const tid = setTimeout(() => {
                     const c = appState.geom.corridors[step.k - 1];
                     if (!c) return;
                     const target = c.zones[step.z];
@@ -3234,6 +3436,7 @@
                         'چهارمضراب سه‌بعدی آزمایشی'
                     );
                 }, step.d);
+                activeDemoTimers.push(tid);
             });
         }
 
@@ -3244,7 +3447,4 @@
         };
     </script>
 </body>
-                </html>
-
-
-                
+</html>
