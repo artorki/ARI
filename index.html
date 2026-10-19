@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>استودیو درام واقعیت افزوده | Pro AR Drum Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vazirmatn Font for Persian UI -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- MediaPipe Hands & Camera Utils -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        body {
+            background-color: #07090e;
+            color: #f1f5f9;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.6);
+        }
+        .glass-pill {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .neon-amber {
+            box-shadow: 0 0 18px rgba(245, 158, 11, 0.45);
+        }
+        .neon-cyan {
+            box-shadow: 0 0 18px rgba(6, 182, 212, 0.45);
+        }
+        /* Custom Range Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.15);
+            height: 6px;
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f59e0b;
+            cursor: pointer;
+            border: 2px solid #fff;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+        }
+        #ar-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            touch-action: none;
+        }
+        /* Hidden raw video element used as MediaPipe source */
+        #webcam-video {
+            display: none;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.06); }
+        }
+        .animate-glow {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden flex flex-col justify-between">
+
+    <!-- Raw Webcam Video (Processed onto Canvas with Mirroring) -->
+    <video id="webcam-video" playsinline muted></video>
+
+    <!-- Main Interactive AR + Drum Physics Canvas -->
+    <canvas id="ar-canvas"></canvas>
+
+    <!-- Top Studio Control Bar -->
+    <header class="relative z-20 w-full px-3 py-2.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Brand & Camera Status -->
+        <div class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto">
+            <div class="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-slate-950 font-black shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+                </svg>
+                <span id="cam-indicator" class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-500 border-2 border-slate-900"></span>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-white">استودیو درام واقعیت افزوده</h1>
+                    <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">PRO AR</span>
+                </div>
+                <p id="status-subtitle" class="text-[11px] text-slate-300">برای شروع، دوربین و موتور صوتی را فعال کنید</p>
+            </div>
+        </div>
+
+        <!-- Real-Time Hand & Stick Telemetry Pills -->
+        <div class="glass-panel rounded-2xl px-3 py-1.5 flex items-center gap-3 sm:gap-5 pointer-events-auto text-xs">
+            <!-- Right Hand Status -->
+            <div class="flex items-center gap-2">
+                <span id="rh-badge" class="w-2.5 h-2.5 rounded-full bg-slate-500 transition-all"></span>
+                <div>
+                    <div class="text-[10px] text-slate-400">دست راست (R)</div>
+                    <div id="rh-state-text" class="font-bold text-slate-200">عدم تشخیص</div>
+                </div>
+            </div>
+            <div class="h-6 w-px bg-white/10"></div>
+            <!-- Left Hand Status -->
+            <div class="flex items-center gap-2">
+                <span id="lh-badge" class="w-2.5 h-2.5 rounded-full bg-slate-500 transition-all"></span>
+                <div>
+                    <div class="text-[10px] text-slate-400">دست چپ (L)</div>
+                    <div id="lh-state-text" class="font-bold text-slate-200">عدم تشخیص</div>
+                </div>
+            </div>
+            <div class="h-6 w-px bg-white/10 hidden md:block"></div>
+            <!-- Last Hit Acoustic Readout -->
+            <div class="hidden md:flex items-center gap-3">
+                <div>
+                    <div class="text-[10px] text-slate-400">آخرین ضربه / ناحیه</div>
+                    <div id="last-hit-name" class="font-bold text-amber-400">—</div>
+                </div>
+                <div class="bg-slate-900/90 px-2.5 py-1 rounded-xl border border-white/10 min-w-[115px]">
+                    <div class="flex justify-between text-[10px] text-slate-400">
+                        <span>شدت (MIDI):</span>
+                        <span id="last-hit-vel" class="font-mono font-bold text-cyan-400">0 / 127</span>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-400">
+                        <span>فرکانس پایه:</span>
+                        <span id="last-hit-freq" class="font-mono font-bold text-emerald-400">0 Hz</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Primary Action Buttons -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <button id="btn-toggle-camera" class="px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg transition flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                <span id="btn-camera-label">روشن کردن دوربین</span>
+            </button>
+
+            <button id="btn-edit-layout" class="glass-panel hover:bg-slate-800/90 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 transition flex items-center gap-1.5 border border-white/15" title="جابجایی و تغییر اندازه سازها">
+                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                </svg>
+                <span class="hidden sm:inline">چیدمان سازها</span>
+            </button>
+
+            <button id="btn-settings-drawer" class="glass-panel hover:bg-slate-800/90 p-2 rounded-xl text-slate-200 transition border border-white/15" title="تنظیمات تخصصی صدا و حسگر">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Collapsible Studio Rack / Settings Drawer -->
+    <aside id="settings-drawer" class="fixed top-20 left-4 z-30 w-80 max-w-[92vw] glass-panel rounded-2xl p-4 transition-all duration-300 transform -translate-x-[120%] opacity-0 pointer-events-none">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3">
+            <h2 class="text-sm font-extrabold text-amber-400 flex items-center gap-2">
+                <span>تنظیمات تخصصی فیزیک و صدا</span>
+            </h2>
+            <button id="btn-close-drawer" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <div class="space-y-3.5 text-xs">
+            <!-- Drum Kit Preset Selector -->
+            <div>
+                <label class="block text-slate-300 font-semibold mb-1">نوع کیت درام (Acoustic Modeling):</label>
+                <select id="select-kit-preset" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-amber-400">
+                    <option value="studio">استودیو آکوستیک افرا (Studio Maple)</option>
+                    <option value="rock">راک و متال سنگین (Arena Birch)</option>
+                    <option value="jazz">جاز و فانک گرم (Vintage Jazz Club)</option>
+                </select>
+            </div>
+
+            <!-- Fist Detection Mode -->
+            <div class="flex items-center justify-between bg-slate-900/60 p-2.5 rounded-xl border border-white/10">
+                <div>
+                    <div class="font-bold text-slate-200">تشخیص مشت برای گرفتن چوب</div>
+                    <div class="text-[10px] text-slate-400">وقتی دست مشت شود چوب ظاهر می‌شود</div>
+                </div>
+                <input type="checkbox" id="chk-require-fist" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+            </div>
+
+            <!-- Fist Grip Sensitivity Slider -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-300">حساسیت تشخیص مشت شدن دست:</span>
+                    <span id="val-fist-sens" class="font-mono text-amber-400">65%</span>
+                </div>
+                <input type="range" id="rng-fist-sens" min="30" max="90" value="65" class="w-full">
+            </div>
+
+            <!-- Velocity Sensitivity Curve -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-300">حساسیت سرعت ضربه (Velocity Gain):</span>
+                    <span id="val-vel-sens" class="font-mono text-cyan-400">1.2x</span>
+                </div>
+                <input type="range" id="rng-vel-sens" min="5" max="25" value="12" class="w-full">
+            </div>
+
+            <!-- Studio Room Reverb -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-300">آکوستیک و ریورب اتاق (Room Reverb):</span>
+                    <span id="val-reverb" class="font-mono text-emerald-400">35%</span>
+                </div>
+                <input type="range" id="rng-reverb" min="0" max="90" value="35" class="w-full">
+            </div>
+
+            <!-- Drum Opacity on Camera -->
+            <div>
+                <div class="flex justify-between mb-1">
+                    <span class="text-slate-300">شفافیت سازها روی تصویر:</span>
+                    <span id="val-pad-opacity" class="font-mono text-amber-300">85%</span>
+                </div>
+                <input type="range" id="rng-pad-opacity" min="35" max="100" value="85" class="w-full">
+            </div>
+
+            <!-- Reset Kit Layout -->
+            <div class="pt-1 flex gap-2">
+                <button id="btn-reset-layout" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold border border-white/10 transition">
+                    بازنشانی چیدمان استاندارد سازها
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Initial Studio Onboarding Banner (Dismissible, non-blocking) -->
+    <div id="onboarding-card" class="relative z-20 mx-auto my-auto max-w-lg w-[92%] glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/30 shadow-2xl text-center">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-slate-950 shadow-lg animate-glow">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h2 class="text-lg sm:text-xl font-black text-white mb-2">شبیه‌ساز حرفه‌ای درام واقعیت افزوده</h2>
+        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-4">
+            دوربین خود را روشن کنید، کمی عقب بنشینید تا دست‌هایتان در کادر باشد.
+            <strong class="text-amber-400">وقتی دست‌های خود را مشت کنید</strong> چوب‌های درام در دستان شما قرار می‌گیرند!
+            با حرکت دست به سمت پایین و ضربه روی هر ساز، صدای واقعی آن ساز دقیقاً متناسب با <strong class="text-cyan-300">سرعت حرکت دست، شدت ضربه و محل برخورد (مرکز، لبه یا بل سنج)</strong> تولید می‌شود.
+        </p>
+        <div class="grid grid-cols-3 gap-2 text-[11px] text-slate-300 mb-5 text-right bg-slate-900/70 p-3 rounded-2xl border border-white/10">
+            <div class="flex items-start gap-1.5">
+                <span class="text-amber-400 font-bold text-sm">۱.</span>
+                <span>مشت کردن دست = گرفتن چوب درام با زاویه طبیعی مچ</span>
+            </div>
+            <div class="flex items-start gap-1.5">
+                <span class="text-cyan-400 font-bold text-sm">۲.</span>
+                <span>سرعت حرکت دست = تغییر بلندی، فرکانس، زنگ و طنین ساز</span>
+            </div>
+            <div class="flex items-start gap-1.5">
+                <span class="text-emerald-400 font-bold text-sm">۳.</span>
+                <span>پشتیبانی همزمان از وب‌کم، ماوس، لمس و صفحه‌کلید</span>
+            </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-3">
+            <button id="btn-start-studio" class="px-6 py-3 rounded-2xl font-extrabold text-sm bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-xl transition transform hover:scale-105">
+                روشن کردن دوربین و ورود به استودیو
+            </button>
+            <button id="btn-start-without-cam" class="px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-white/15 transition">
+                اجرای فعلی بدون دوربین (تست با ماوس/تاچ)
+            </button>
+        </div>
+    </div>
+
+    <!-- Bottom Pro Studio Dock (Metronome, Recorder, Kick Pedal & Instructions) -->
+    <footer class="relative z-20 w-full px-3 py-2.5 sm:px-5 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Metronome & Tempo Control -->
+        <div class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 pointer-events-auto">
+            <button id="btn-metronome" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/15 flex items-center justify-center text-slate-200 transition" title="مترونوم استودیویی">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </button>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-slate-400">تمپو:</span>
+                    <span id="bpm-display" class="text-xs font-mono font-extrabold text-white">110 BPM</span>
+                    <div id="beat-dots" class="flex items-center gap-1 mr-1">
+                        <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                        <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                        <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                        <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+                    </div>
+                </div>
+                <input type="range" id="rng-bpm" min="50" max="200" value="110" class="w-28 sm:w-36 mt-1">
+            </div>
+        </div>
+
+        <!-- Center Foot Pedals (Kick Bass Drum + Hi-Hat Pedal) -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <button id="btn-hihat-pedal" class="glass-panel hover:bg-slate-800/90 active:scale-95 px-3.5 py-2 rounded-2xl border border-amber-500/30 flex items-center gap-2 transition">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400" id="hh-pedal-dot"></span>
+                <div class="text-right">
+                    <div class="text-xs font-extrabold text-white">پدال های‌هت <span class="text-[10px] font-mono text-amber-300">[Shift]</span></div>
+                    <div id="hh-pedal-state" class="text-[10px] text-slate-300">حالت: بسته (Closed)</div>
+                </div>
+            </button>
+
+            <button id="btn-kick-pedal" class="glass-panel hover:bg-amber-500/20 active:scale-95 px-4 py-2 rounded-2xl border border-orange-500/40 flex items-center gap-2 transition shadow-lg">
+                <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-orange-500 to-rose-600 flex items-center justify-center text-white font-black text-xs">
+                    K
+                </div>
+                <div class="text-right">
+                    <div class="text-xs font-extrabold text-white">پدال کیک / بیس <span class="text-[10px] font-mono text-orange-300">[Space]</span></div>
+                    <div class="text-[10px] text-slate-300">ضربه با چوب یا کلید Space</div>
+                </div>
+            </button>
+        </div>
+
+        <!-- Multi-Track Performance Recorder -->
+        <div class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-2 pointer-events-auto">
+            <button id="btn-record" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-1.5 transition">
+                <span id="rec-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <span id="rec-label">ضبط ریتم</span>
+            </button>
+            <button id="btn-play-loop" disabled class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-40 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition">
+                <span id="loop-label">پخش لوپ (0)</span>
+            </button>
+            <button id="btn-clear-loop" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-xs transition" title="پاک کردن ضبط">
+                ✕
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        const AppState = {
+            cameraActive: false,
+            editLayoutMode: false,
+            requireFistForSticks: true,
+            fistThreshold: 0.65,      // 0..1 curl ratio required to form a fist
+            velocitySensitivity: 1.2, // Multiplier for hand speed -> MIDI velocity
+            reverbAmount: 0.35,
+            padOpacity: 0.85,
+            kitPreset: 'studio',      // 'studio' | 'rock' | 'jazz'
+            hiHatClosed: true,        // Controlled by left hand zone or Shift/pedal
+            metronomeOn: false,
+            bpm: 110,
+            isRecording: false,
+            isPlayingLoop: false,
+            recordStartTime: 0,
+            recordedEvents: [],
+            loopDuration: 0,
+            loopTimerIds: [],
+            draggingPad: null,
+            resizingPad: null,
+            lastFrameTime: performance.now()
+        };
+
+        /**
+         * Complete 8-Piece Professional Drum Kit Layout
+         * Coordinates (rx, ry, rr) are normalized (0..1) relative to viewport width/height
+         * so the kit adapts smoothly to any screen aspect ratio.
+         */
+        const DEFAULT_DRUM_KIT = [
+            {
+                id: 'crash',
+                name: 'سنج کرش (Crash 18")',
+                shortName: 'CRASH',
+                type: 'cymbal',
+                key: '1',
+                rx: 0.20, ry: 0.26, rr: 0.088,
+                baseFreq: 410,
+                pan: -0.65,
+                color: '#f59e0b',
+                accent: '#fde68a',
+                tilt: 0.72
+            },
+            {
+                id: 'ride',
+                name: 'سنج راید (Ride 20")',
+                shortName: 'RIDE',
+                type: 'cymbal',
+                key: '2',
+                rx: 0.80, ry: 0.27, rr: 0.096,
+                baseFreq: 525,
+                pan: 0.65,
+                color: '#d97706',
+                accent: '#fef3c7',
+                tilt: 0.74
+            },
+            {
+                id: 'hihat',
+                name: 'های‌هت (Hi-Hat 14")',
+                shortName: 'HI-HAT',
+                type: 'hihat',
+                key: '3',
+                rx: 0.14, ry: 0.50, rr: 0.078,
+                baseFreq: 680,
+                pan: -0.75,
+                color: '#eab308',
+                accent: '#fef08a',
+                tilt: 0.76
+            },
+            {
+                id: 'tom1',
+                name: 'تام زیر (High Tom 10")',
+                shortName: 'HIGH TOM',
+                type: 'tom',
+                key: '4',
+                rx: 0.39, ry: 0.36, rr: 0.074,
+                baseFreq: 165,
+                pan: -0.25,
+                color: '#38bdf8',
+                accent: '#bae6fd',
+                tilt: 0.84
+            },
+            {
+                id: 'tom2',
+                name: 'تام میانی (Mid Tom 12")',
+                shortName: 'MID TOM',
+                type: 'tom',
+                key: '5',
+                rx: 0.61, ry: 0.36, rr: 0.080,
+                baseFreq: 128,
+                pan: 0.25,
+                color: '#60a5fa',
+                accent: '#dbeafe',
+                tilt: 0.84
+            },
+            {
+                id: 'snare',
+                name: 'اسنیر / طبل ریز (Snare 14")',
+                shortName: 'SNARE',
+                type: 'snare',
+                key: '6',
+                rx: 0.29, ry: 0.63, rr: 0.088,
+                baseFreq: 195,
+                pan: -0.35,
+                color: '#f43f5e',
+                accent: '#fecdd3',
+                tilt: 0.88
+            },
+            {
+                id: 'floortom',
+                name: 'فلور تام (Floor Tom 16")',
+                shortName: 'FLOOR TOM',
+                type: 'tom',
+                key: '7',
+                rx: 0.74, ry: 0.63, rr: 0.095,
+                baseFreq: 86,
+                pan: 0.58,
+                color: '#818cf8',
+                accent: '#e0e7ff',
+                tilt: 0.88
+            },
+            {
+                id: 'kick',
+                name: 'کیک / بیس درام (Kick 22")',
+                shortName: 'KICK BASS',
+                type: 'kick',
+                key: ' ',
+                rx: 0.50, ry: 0.76, rr: 0.098,
+                baseFreq: 56,
+                pan: 0.0,
+                color: '#f97316',
+                accent: '#ffedd5',
+                tilt: 0.95
+            }
+        ];
+
+        // Deep copy working drum pads with dynamic animation properties
+        let drumPads = [];
+        function resetDrumKitLayout() {
+            drumPads = DEFAULT_DRUM_KIT.map(pad => ({
+                ...pad,
+                hitEnergy: 0,         // Current vibration energy (0..1)
+                hitPhase: 0,          // Oscillation phase for membrane/cymbal wobble
+                lastHitTime: 0,
+                lastZone: 'center',
+                ripples: []           // Visual impact waves on the drum head
+            }));
+        }
+        resetDrumKitLayout();
+
+        /**
+         * Studio Acoustic & Physical Modeling Drum Engine
+         * Synthesizes multi-modal membranes, snare wire rattle, metallic FM cymbal matrices,
+         * stereo panning, and room convolution reverb based on exact strike velocity & hit zone.
+         */
+        class PhysicalDrumAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.compressor = null;
+                this.reverbNode = null;
+                this.reverbGain = null;
+                this.dryGain = null;
+                this.noiseBuffer = null;
+                this.openHiHatNodes = []; // To allow realistic hi-hat choking when closed!
+            }
+
+            init() {
+                if (this.ctx) {
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    return;
+                }
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx();
+
+                // Master studio bus: Dry + Reverb -> Dynamics Compressor -> Destination
+                this.compressor = this.ctx.createDynamicsCompressor();
+                this.compressor.threshold.setValueAtTime(-10, this.ctx.currentTime);
+                this.compressor.knee.setValueAtTime(12, this.ctx.currentTime);
+                this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
+                this.compressor.attack.setValueAtTime(0.002, this.ctx.currentTime);
+                this.compressor.release.setValueAtTime(0.15, this.ctx.currentTime);
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.setValueAtTime(0.95, this.ctx.currentTime);
+
+                this.dryGain = this.ctx.createGain();
+                this.dryGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
+
+                this.reverbGain = this.ctx.createGain();
+                this.reverbGain.gain.setValueAtTime(AppState.reverbAmount, this.ctx.currentTime);
+
+                this.reverbNode = this.createStudioImpulseResponse(1.6, 2.8);
+
+                this.dryGain.connect(this.compressor);
+                this.reverbNode.connect(this.reverbGain);
+                this.reverbGain.connect(this.compressor);
+                this.compressor.connect(this.masterGain);
+                this.masterGain.connect(this.ctx.destination);
+
+                // Pre-generate 2 seconds of high-resolution white/pink noise buffer
+                this.noiseBuffer = this.createNoiseBuffer(2.0);
+            }
+
+            createNoiseBuffer(durationSeconds) {
+                const sampleRate = this.ctx.sampleRate;
+                const length = sampleRate * durationSeconds;
+                const buffer = this.ctx.createBuffer(1, length, sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < length; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                return buffer;
+            }
+
+            createStudioImpulseResponse(duration, decay) {
+                const rate = this.ctx.sampleRate;
+                const length = rate * duration;
+                const impulse = this.ctx.createBuffer(2, length, rate);
+                const left = impulse.getChannelData(0);
+                const right = impulse.getChannelData(1);
+                for (let i = 0; i < length; i++) {
+                    const n = i / length;
+                    // Early reflections + exponential studio room tail
+                    const env = Math.pow(1 - n, decay);
+                    left[i] = (Math.random() * 2 - 1) * env * 0.5;
+                    right[i] = (Math.random() * 2 - 1) * env * 0.5;
+                }
+                const convolver = this.ctx.createConvolver();
+                convolver.buffer = impulse;
+                return convolver;
+            }
+
+            setReverbLevel(val) {
+                if (!this.reverbGain || !this.ctx) return;
+                this.reverbGain.gain.setTargetAtTime(val, this.ctx.currentTime, 0.03);
+            }
+
+            getPresetMultipliers() {
+                switch (AppState.kitPreset) {
+                    case 'rock':
+                        return { pitchMult: 0.88, decayMult: 1.30, snapMult: 1.35 };
+                    case 'jazz':
+                        return { pitchMult: 1.18, decayMult: 0.82, snapMult: 0.90 };
+                    default: // 'studio'
+                        return { pitchMult: 1.0, decayMult: 1.0, snapMult: 1.0 };
+                }
+            }
+
+            /**
+             * Triggers a realistic drum sound based on:
+             * @param {Object} pad - Drum pad definition
+             * @param {number} velocity - Normalized impact velocity (0.05 to 1.0)
+             * @param {string} zone - 'center' | 'edge' | 'bell'
+             */
+            triggerPad(pad, velocity, zone = 'center') {
+                this.init();
+                const now = this.ctx.currentTime;
+                const vel = Math.max(0.05, Math.min(1.0, velocity));
+                const preset = this.getPresetMultipliers();
+
+                // Stereo Panner matching drum's horizontal position
+                const panner = this.ctx.createStereoPanner();
+                panner.pan.setValueAtTime(Math.max(-0.9, Math.min(0.9, (pad.rx - 0.5) * 1.6)), now);
+                panner.connect(this.dryGain);
+                panner.connect(this.reverbNode);
+
+                let reportedFreq = pad.baseFreq * preset.pitchMult;
+
+                if (pad.type === 'kick') {
+                    reportedFreq = this.synthKick(now, vel, pad.baseFreq * preset.pitchMult, preset, panner);
+                } else if (pad.type === 'snare') {
+                    reportedFreq = this.synthSnare(now, vel, pad.baseFreq * preset.pitchMult, zone, preset, panner);
+                } else if (pad.type === 'tom') {
+                    reportedFreq = this.synthTom(now, vel, pad.baseFreq * preset.pitchMult, zone, preset, panner);
+                } else if (pad.type === 'hihat') {
+                    reportedFreq = this.synthHiHat(now, vel, pad.baseFreq * preset.pitchMult, zone, preset, panner);
+                } else if (pad.type === 'cymbal') {
+                    reportedFreq = this.synthCymbal(now, vel, pad.baseFreq * preset.pitchMult, pad.id, zone, preset, panner);
+                }
+
+                return Math.round(reportedFreq);
+            }
+
+            synthKick(now, vel, baseFreq, preset, dest) {
+                // 1. Sub-bass & punch membrane oscillator with dynamic pitch drop
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+
+                const startFreq = baseFreq * (2.6 + vel * 1.4);
+                const endFreq = baseFreq * 0.78;
+                const decay = (0.32 + vel * 0.22) * preset.decayMult;
+
+                osc.frequency.setValueAtTime(startFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.15, now + 0.038);
+                osc.frequency.exponentialRampToValueAtTime(endFreq, now + decay);
+
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(vel * 1.15, now + 0.003);
+                gain.gain.exponentialRampToValueAtTime(0.0008, now + decay);
+
+                osc.connect(gain);
+                gain.connect(dest);
+                osc.start(now);
+                osc.stop(now + decay + 0.02);
+
+                // 2. Beater wooden/felt click transient (brighter on hard hits)
+                const clickOsc = this.ctx.createOscillator();
+                const clickGain = this.ctx.createGain();
+                clickOsc.type = 'triangle';
+                clickOsc.frequency.setValueAtTime(850 + vel * 950, now);
+                clickOsc.frequency.exponentialRampToValueAtTime(110, now + 0.022);
+
+                clickGain.gain.setValueAtTime(Math.pow(vel, 1.4) * 0.55 * preset.snapMult, now);
+                clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
+
+                clickOsc.connect(clickGain);
+                clickGain.connect(dest);
+                clickOsc.start(now);
+                clickOsc.stop(now + 0.03);
+
+                return baseFreq * (1 + vel * 0.15);
+            }
+
+            synthSnare(now, vel, baseFreq, zone, preset, dest) {
+                const isRim = zone === 'edge';
+                // 1. Dual-mode drum shell & head resonance
+                const modes = isRim ? [1.0, 1.82, 2.54] : [1.0, 1.59];
+                modes.forEach((ratio, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = idx === 0 ? 'triangle' : 'sine';
+                    const f = baseFreq * ratio * (isRim ? 1.14 : 1.0);
+
+                    osc.frequency.setValueAtTime(f * (1.35 + vel * 0.25), now);
+                    osc.frequency.exponentialRampToValueAtTime(f, now + 0.035);
+
+                    const modeDecay = (idx === 0 ? 0.16 : (isRim ? 0.28 : 0.11)) * preset.decayMult;
+                    const amp = (idx === 0 ? 0.65 : (isRim ? 0.42 : 0.22)) * vel;
+
+                    gain.gain.setValueAtTime(amp, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + modeDecay);
+
+                    osc.connect(gain);
+                    gain.connect(dest);
+                    osc.start(now);
+                    osc.stop(now + modeDecay + 0.02);
+                });
+
+                // 2. Snare wire rattle (bandpass + highpass noise with velocity-dependent brightness & tail)
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = this.noiseBuffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(isRim ? 1400 : 850 + (1 - vel) * 400, now);
+
+                const peak = this.ctx.createBiquadFilter();
+                peak.type = 'peaking';
+                peak.frequency.setValueAtTime(3200 + vel * 2400, now);
+                peak.gain.setValueAtTime(6 * preset.snapMult, now);
+
+                const noiseGain = this.ctx.createGain();
+                const wireDecay = (0.18 + vel * 0.16) * preset.decayMult;
+                noiseGain.gain.setValueAtTime(0.001, now);
+                noiseGain.gain.linearRampToValueAtTime(Math.pow(vel, 0.9) * 0.78 * preset.snapMult, now + 0.002);
+                noiseGain.gain.exponentialRampToValueAtTime(0.0008, now + wireDecay);
+
+                noise.connect(filter);
+                filter.connect(peak);
+                peak.connect(noiseGain);
+                noiseGain.connect(dest);
+                noise.start(now);
+                noise.stop(now + wireDecay + 0.02);
+
+                return isRim ? baseFreq * 1.45 : baseFreq * (1 + vel * 0.1);
+            }
+
+            synthTom(now, vel, baseFreq, zone, preset, dest) {
+                const isRim = zone === 'edge';
+                // Circular membrane Bessel modes (1.00, 1.58, 2.13)
+                const ratios = isRim ? [1.0, 1.58, 2.35] : [1.0, 1.58];
+                const baseDecay = (180 / baseFreq) * 0.24 * preset.decayMult * (0.75 + vel * 0.45);
+
+                ratios.forEach((ratio, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    const f = baseFreq * ratio;
+
+                    // Velocity-sensitive pitch bend when stick depresses the drumhead
+                    osc.frequency.setValueAtTime(f * (1.22 + vel * 0.32), now);
+                    osc.frequency.exponentialRampToValueAtTime(f * 1.02, now + 0.055);
+                    osc.frequency.exponentialRampToValueAtTime(f * 0.97, now + baseDecay);
+
+                    const modeAmp = idx === 0 ? vel * 0.85 : vel * (isRim ? 0.38 : 0.18);
+                    const d = idx === 0 ? baseDecay : baseDecay * 0.45;
+
+                    gain.gain.setValueAtTime(0.001, now);
+                    gain.gain.linearRampToValueAtTime(modeAmp, now + 0.002);
+                    gain.gain.exponentialRampToValueAtTime(0.0008, now + d);
+
+                    osc.connect(gain);
+                    gain.connect(dest);
+                    osc.start(now);
+                    osc.stop(now + d + 0.02);
+                });
+
+                // Stick attack transient on mylar head
+                const attackNoise = this.ctx.createBufferSource();
+                attackNoise.buffer = this.noiseBuffer;
+                const bp = this.ctx.createBiquadFilter();
+                bp.type = 'bandpass';
+                bp.frequency.setValueAtTime(1600 + vel * 2600, now);
+                bp.Q.setValueAtTime(1.8, now);
+
+                const nGain = this.ctx.createGain();
+                nGain.gain.setValueAtTime(Math.pow(vel, 1.2) * 0.35, now);
+                nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
+
+                attackNoise.connect(bp);
+                bp.connect(nGain);
+                nGain.connect(dest);
+                attackNoise.start(now);
+                attackNoise.stop(now + 0.032);
+
+                return baseFreq * (1 + vel * 0.12);
+            }
+
+            chokeOpenHiHats(now) {
+                while (this.openHiHatNodes.length > 0) {
+                    const g = this.openHiHatNodes.pop();
+                    try {
+                        g.gain.cancelScheduledValues(now);
+                        g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), now);
+                        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+                    } catch (e) {}
+                }
+            }
+
+            synthHiHat(now, vel, baseFreq, zone, preset, dest) {
+                const isClosed = AppState.hiHatClosed && zone !== 'edge';
+                if (isClosed) {
+                    this.chokeOpenHiHats(now);
+                }
+
+                // 6 inharmonic metallic square oscillators (TR-808 / physical bronze ratio matrix)
+                const ratios = [1.0, 1.342, 1.618, 1.925, 2.514, 3.172];
+                const metalMix = this.ctx.createGain();
+                metalMix.gain.setValueAtTime(0.22, now);
+
+                const duration = isClosed
+                    ? (0.042 + vel * 0.035)
+                    : (0.42 + vel * 0.45) * preset.decayMult;
+
+                ratios.forEach(r => {
+                    const osc = this.ctx.createOscillator();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(baseFreq * r * (zone === 'bell' ? 1.15 : 1.0), now);
+                    osc.connect(metalMix);
+                    osc.start(now);
+                    osc.stop(now + duration + 0.02);
+                });
+
+                // Crisp sizzle noise layer
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = this.noiseBuffer;
+                const nGain = this.ctx.createGain();
+                nGain.gain.setValueAtTime(0.55, now);
+                noise.connect(nGain);
+                nGain.connect(metalMix);
+                noise.start(now);
+                noise.stop(now + duration + 0.02);
+
+                const hp = this.ctx.createBiquadFilter();
+                hp.type = 'highpass';
+                hp.frequency.setValueAtTime(6200 + vel * 2200, now);
+
+                const env = this.ctx.createGain();
+                env.gain.setValueAtTime(0.001, now);
+                env.gain.linearRampToValueAtTime(vel * 0.72, now + 0.002);
+                env.gain.exponentialRampToValueAtTime(0.0006, now + duration);
+
+                if (!isClosed) {
+                    this.openHiHatNodes.push(env);
+                }
+
+                metalMix.connect(hp);
+                hp.connect(env);
+                env.connect(dest);
+
+                return baseFreq * (isClosed ? 4.2 : 3.6);
+            }
+
+            synthCymbal(now, vel, baseFreq, padId, zone, preset, dest) {
+                const isRide = padId === 'ride';
+                const isBell = zone === 'bell' || zone === 'center';
+                const decay = (isRide ? (1.35 + vel * 0.65) : (1.15 + vel * 0.85)) * preset.decayMult;
+
+                // Metallic shimmer bank
+                const ratios = [1.0, 1.47, 1.89, 2.41, 3.12, 4.05];
+                const bank = this.ctx.createGain();
+                bank.gain.setValueAtTime(0.16, now);
+
+                ratios.forEach(r => {
+                    const osc = this.ctx.createOscillator();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(baseFreq * r * (1 + vel * 0.02), now);
+                    osc.connect(bank);
+                    osc.start(now);
+                    osc.stop(now + decay + 0.05);
+                });
+
+                // Airy bronze wash noise
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = this.noiseBuffer;
+                const nGain = this.ctx.createGain();
+                nGain.gain.setValueAtTime(isRide ? 0.35 : 0.65, now);
+                noise.connect(nGain);
+                nGain.connect(bank);
+                noise.start(now);
+                noise.stop(now + decay + 0.05);
+
+                const bp = this.ctx.createBiquadFilter();
+                bp.type = 'highpass';
+                bp.frequency.setValueAtTime(isRide ? 3800 : 2600 + (1 - vel) * 900, now);
+
+                const env = this.ctx.createGain();
+                env.gain.setValueAtTime(0.001, now);
+                env.gain.linearRampToValueAtTime(vel * (isRide ? 0.52 : 0.72), now + 0.004);
+                env.gain.exponentialRampToValueAtTime(0.0005, now + decay);
+
+                bank.connect(bp);
+                bp.connect(env);
+                env.connect(dest);
+
+                // Distinct piercing Bell Ping when striking Ride/Crash center or bell
+                if (isRide || isBell) {
+                    const bellOsc = this.ctx.createOscillator();
+                    const bellGain = this.ctx.createGain();
+                    bellOsc.type = 'sine';
+                    const bellFreq = baseFreq * (isRide ? 2.75 : 2.35);
+                    bellOsc.frequency.setValueAtTime(bellFreq, now);
+
+                    const bellAmp = vel * (isBell ? 0.45 : 0.22);
+                    bellGain.gain.setValueAtTime(bellAmp, now);
+                    bellGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.55);
+
+                    bellOsc.connect(bellGain);
+                    bellGain.connect(dest);
+                    bellOsc.start(now);
+                    bellOsc.stop(now + 0.58);
+                }
+
+                return baseFreq * (isBell ? 2.75 : 2.1);
+            }
+
+            playMetronomeClick(isDownbeat) {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(isDownbeat ? 1320 : 880, now);
+                gain.gain.setValueAtTime(0.22, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start(now);
+                osc.stop(now + 0.04);
+            }
+        }
+
+        const audioEngine = new PhysicalDrumAudioEngine();
+
+        /**
+         * Tracks Left and Right hands + pointer/mouse fallback.
+         * Computes:
+         * - Fist Curl Ratio (0 = open palm, 1 = tight fist)
+         * - 3D-projected Drumstick grip point, angle, and tip coordinates
+         * - Instantaneous velocity vector (vx, vy, speed) of the stick tip
+         * - Per-pad cooldowns and collision state so rapid rolls feel crisp without false double-triggers
+         */
+        function createHandController(id, label, color) {
+            return {
+                id,
+                label,
+                color,
+                detected: false,
+                isFist: false,
+                curlRatio: 0,
+                landmarks: null,
+                // Smoothed grip & stick tip coordinates in canvas pixels
+                gripX: 0,
+                gripY: 0,
+                tipX: 0,
+                tipY: 0,
+                prevTipX: 0,
+                prevTipY: 0,
+                stickAngle: -Math.PI / 2,
+                vx: 0,
+                vy: 0,
+                speed: 0,             // px per millisecond
+                peakDownwardVel: 0,   // Captures peak downward swing velocity right before impact
+                trail: [],            // Motion trail of stick tip for visual speed feedback
+                padInsideMap: {},     // Tracks whether tip was already inside pad on previous frame
+                padCooldownMap: {}    // Prevents chatter within 45ms on the same pad
+            };
+        }
+
+        const HandTracker = {
+            right: createHandController('right', 'R', '#22d3ee'),
+            left: createHandController('left', 'L', '#f59e0b'),
+            pointer: createHandController('pointer', 'M', '#a855f7') // Mouse / Touch virtual stick
+        };
+
+        /**
+         * Evaluates how curled the 4 fingers (Index, Middle, Ring, Pinky) are
+         * by comparing fingertip-to-wrist distance vs MCP-to-wrist distance.
+         * Invariant to camera distance (scale-normalized)!
+         */
+        function computeHandFistRatio(landmarks) {
+            const wrist = landmarks[0];
+            const fingerPairs = [
+                { tip: 8, pip: 6, mcp: 5 },   // Index
+                { tip: 12, pip: 10, mcp: 9 }, // Middle
+                { tip: 16, pip: 14, mcp: 13 },// Ring
+                { tip: 20, pip: 18, mcp: 17 } // Pinky
+            ];
+
+            let curledScore = 0;
+            for (const f of fingerPairs) {
+                const tipDist = Math.hypot(
+                    landmarks[f.tip].x - wrist.x,
+                    landmarks[f.tip].y - wrist.y
+                );
+                const mcpDist = Math.hypot(
+                    landmarks[f.mcp].x - wrist.x,
+                    landmarks[f.mcp].y - wrist.y
+                );
+                // When finger is open, tipDist / mcpDist is around 1.8 - 2.2
+                // When curled into a fist, tipDist / mcpDist drops below 1.25
+                const ratio = tipDist / Math.max(0.0001, mcpDist);
+                const curl = Math.max(0, Math.min(1, (1.85 - ratio) / 0.78));
+                curledScore += curl;
+            }
+            return curledScore / 4;
+        }
+
+        const floatingHitMarkers = [];
+
+        function updateHandKinematics(hand, rawGripX, rawGripY, targetAngle, isFistNow, dtMs, canvasW, canvasH) {
+            const smoothing = 0.58; // Responsive low-latency smoothing
+            if (!hand.detected) {
+                hand.gripX = rawGripX;
+                hand.gripY = rawGripY;
+                hand.stickAngle = targetAngle;
+            } else {
+                hand.gripX = hand.gripX + (rawGripX - hand.gripX) * smoothing;
+                hand.gripY = hand.gripY + (rawGripY - hand.gripY) * smoothing;
+
+                // Smooth angle wrapping
+                let diff = targetAngle - hand.stickAngle;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                hand.stickAngle += diff * 0.48;
+            }
+
+            hand.detected = true;
+            hand.isFist = isFistNow;
+
+            // Stick length scales naturally with viewport size
+            const stickLength = Math.min(canvasW, canvasH) * 0.27;
+            const newTipX = hand.gripX + Math.cos(hand.stickAngle) * stickLength;
+            const newTipY = hand.gripY + Math.sin(hand.stickAngle) * stickLength;
+
+            if (hand.prevTipX === 0 && hand.prevTipY === 0) {
+                hand.prevTipX = newTipX;
+                hand.prevTipY = newTipY;
+            }
+
+            const safeDt = Math.max(8, Math.min(80, dtMs));
+            hand.vx = (newTipX - hand.prevTipX) / safeDt;
+            hand.vy = (newTipY - hand.prevTipY) / safeDt;
+            hand.speed = Math.hypot(hand.vx, hand.vy);
+
+            // Track short-window peak velocity so fast strokes register full momentum on contact
+            hand.peakDownwardVel = Math.max(hand.speed, hand.peakDownwardVel * 0.82);
+
+            hand.prevTipX = hand.tipX || newTipX;
+            hand.prevTipY = hand.tipY || newTipY;
+            hand.tipX = newTipX;
+            hand.tipY = newTipY;
+
+            // Append to motion ribbon trail when holding stick
+            if (hand.isFist) {
+                hand.trail.push({
+                    x: hand.tipX,
+                    y: hand.tipY,
+                    speed: hand.speed,
+                    time: performance.now()
+                });
+                if (hand.trail.length > 10) hand.trail.shift();
+
+                // Evaluate drum collisions
+                checkStickDrumCollisions(hand, canvasW, canvasH);
+            } else {
+                hand.trail = [];
+                hand.padInsideMap = {};
+            }
+        }
+
+        function checkStickDrumCollisions(hand, canvasW, canvasH) {
+            if (AppState.editLayoutMode) return;
+            const now = performance.now();
+            const minDim = Math.min(canvasW, canvasH);
+
+            for (const pad of drumPads) {
+                const cx = pad.rx * canvasW;
+                const cy = pad.ry * canvasH;
+                const rx = pad.rr * minDim;
+                const ry = rx * pad.tilt;
+
+                // Normalized elliptical distance from drum center (0 = exact center, 1 = outer rim)
+                const normDist = Math.hypot((hand.tipX - cx) / rx, (hand.tipY - cy) / ry);
+                const isInside = normDist <= 1.04;
+                const wasInside = !!hand.padInsideMap[pad.id];
+                const lastCooldown = hand.padCooldownMap[pad.id] || 0;
+
+                // Trigger if:
+                // 1) Stick tip just entered the drum pad boundary, OR
+                // 2) Stick tip is inside the pad and executed a sharp downward whipping motion (vy > 0.85)
+                const downwardSnap = isInside && hand.vy > 0.85 && (now - lastCooldown > 115);
+                const boundaryStrike = isInside && !wasInside && (now - lastCooldown > 48);
+
+                if (boundaryStrike || downwardSnap) {
+                    // Calculate physical impact velocity from stick tip speed + downward component
+                    const downwardBoost = Math.max(0, hand.vy) * 0.45;
+                    const effectiveSpeed = (hand.peakDownwardVel * 0.75 + hand.speed * 0.4 + downwardBoost) * AppState.velocitySensitivity;
+
+                    // Map speed (typically 0.15 to 3.2 px/ms) to normalized MIDI velocity (0.08 to 1.0)
+                    const velocity = Math.max(0.08, Math.min(1.0, Math.pow(effectiveSpeed / 2.35, 0.82)));
+
+                    // Determine articulation zone based on radial distance
+                    let zone = 'center';
+                    if (pad.type === 'cymbal' || pad.type === 'hihat') {
+                        zone = normDist < 0.34 ? 'bell' : 'edge';
+                    } else {
+                        zone = normDist > 0.74 ? 'edge' : 'center';
+                    }
+
+                    executeDrumStrike(pad, velocity, zone, hand.tipX, hand.tipY, true);
+                    hand.padCooldownMap[pad.id] = now;
+                    hand.peakDownwardVel *= 0.3;
+                }
+
+                hand.padInsideMap[pad.id] = isInside;
+            }
+        }
+
+        function executeDrumStrike(pad, velocity, zone, hitX, hitY, recordable = true) {
+            const freq = audioEngine.triggerPad(pad, velocity, zone);
+            const now = performance.now();
+
+            // Physical pad vibration & ripple state
+            pad.hitEnergy = Math.min(1.3, pad.hitEnergy + velocity * 0.95);
+            pad.lastHitTime = now;
+            pad.lastZone = zone;
+
+            const canvas = document.getElementById('ar-canvas');
+            const cx = hitX !== undefined ? hitX : pad.rx * canvas.width;
+            const cy = hitY !== undefined ? hitY : pad.ry * canvas.height;
+
+            pad.ripples.push({
+                x: cx,
+                y: cy,
+                radius: 6,
+                maxRadius: Math.min(canvas.width, canvas.height) * pad.rr * (0.65 + velocity * 0.75),
+                alpha: 0.95,
+                velocity
+            });
+
+            // Floating telemetry pop-up at impact location
+            const midiVel = Math.max(1, Math.min(127, Math.round(velocity * 127)));
+            const zoneLabels = {
+                center: 'مرکز (Center)',
+                edge: pad.type === 'cymbal' || pad.type === 'hihat' ? 'لبه سنج (Bow)' : 'ریم‌شات (Rim)',
+                bell: 'بل سنج (Bell)'
+            };
+
+            floatingHitMarkers.push({
+                x: cx,
+                y: cy - 12,
+                text: `${pad.shortName} • ${midiVel}`,
+                subText: `${freq}Hz (${zoneLabels[zone] || 'مرکز'})`,
+                color: pad.color,
+                alpha: 1.0,
+                scale: 0.75 + velocity * 0.55
+            });
+
+            // Update top telemetry HUD
+            const nameEl = document.getElementById('last-hit-name');
+            const velEl = document.getElementById('last-hit-vel');
+            const freqEl = document.getElementById('last-hit-freq');
+            if (nameEl) nameEl.textContent = `${pad.shortName} - ${zoneLabels[zone]}`;
+            if (velEl) velEl.textContent = `${midiVel} / 127`;
+            if (freqEl) freqEl.textContent = `${freq} Hz`;
+
+            // Record into multi-track loop if recording is active
+            if (recordable && AppState.isRecording) {
+                AppState.recordedEvents.push({
+                    timeOffset: now - AppState.recordStartTime,
+                    padId: pad.id,
+                    velocity,
+                    zone
+                });
+                updateRecorderUI();
+            }
+        }
+
+        const videoElement = document.getElementById('webcam-video');
+        const canvasElement = document.getElementById('ar-canvas');
+        const ctx = canvasElement.getContext('2d');
+        let mpHands = null;
+        let mpCamera = null;
+        let latestHandResults = null;
+
+        async function initMediaPipeAndCamera() {
+            const statusSub = document.getElementById('status-subtitle');
+            const camBtnLabel = document.getElementById('btn-camera-label');
+            const camIndicator = document.getElementById('cam-indicator');
+
+            try {
+                audioEngine.init();
+                statusSub.textContent = 'در حال بارگذاری مدل هوش مصنوعی تشخیص دست و روشن کردن دوربین...';
+                camBtnLabel.textContent = 'در حال اتصال...';
+
+                if (!mpHands) {
+                    mpHands = new Hands({
+                        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                    });
+                    mpHands.setOptions({
+                        maxNumHands: 2,
+                        modelComplexity: 1,
+                        minDetectionConfidence: 0.65,
+                        minTrackingConfidence: 0.65
+                    });
+                    mpHands.onResults((results) => {
+                        latestHandResults = results;
+                    });
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    },
+                    audio: false
+                });
+
+                videoElement.srcObject = stream;
+                await videoElement.play();
+
+                AppState.cameraActive = true;
+                camIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-900 animate-ping';
+                camBtnLabel.textContent = 'خاموش کردن دوربین';
+                statusSub.textContent = 'دوربین فعال است • دست‌ها را مشت کنید تا چوب‌های درام در دستتان قرار بگیرند';
+                document.getElementById('onboarding-card').classList.add('hidden');
+
+                // Start continuous frame processing loop for MediaPipe
+                processVideoFrameLoop();
+            } catch (err) {
+                console.warn('Camera access error or unavailable:', err);
+                AppState.cameraActive = false;
+                camIndicator.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 border-2 border-slate-900';
+                camBtnLabel.textContent = 'تلاش مجدد دوربین';
+                statusSub.textContent = 'دوربین یافت نشد یا دسترسی داده نشد • حالت تعاملی ماوس/تاچ و کیبورد فعال است';
+                document.getElementById('onboarding-card').classList.add('hidden');
+            }
+        }
+
+        function stopCameraStream() {
+            if (videoElement.srcObject) {
+                videoElement.srcObject.getTracks().forEach(t => t.stop());
+                videoElement.srcObject = null;
+            }
+            AppState.cameraActive = false;
+            latestHandResults = null;
+            HandTracker.left.detected = false;
+            HandTracker.right.detected = false;
+            document.getElementById('cam-indicator').className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-500 border-2 border-slate-900';
+            document.getElementById('btn-camera-label').textContent = 'روشن کردن دوربین';
+            document.getElementById('status-subtitle').textContent = 'دوربین غیرفعال • می‌توانید با ماوس، صفحه لمسی یا کیبورد بنوازید';
+        }
+
+        let isProcessingMpFrame = false;
+        async function processVideoFrameLoop() {
+            if (!AppState.cameraActive) return;
+            if (videoElement.readyState >= 2 && !isProcessingMpFrame && mpHands) {
+                isProcessingMpFrame = true;
+                try {
+                    await mpHands.send({ image: videoElement });
+                } catch (e) {}
+                isProcessingMpFrame = false;
+            }
+            if (AppState.cameraActive) {
+                requestAnimationFrame(processVideoFrameLoop);
+            }
+        }
+
+        function updateHandsFromMediaPipe(dtMs, canvasW, canvasH) {
+            // Reset detection flags before parsing current frame
+            let sawLeft = false;
+            let sawRight = false;
+
+            if (latestHandResults && latestHandResults.multiHandLandmarks && latestHandResults.multiHandLandmarks.length > 0) {
+                const landmarksList = latestHandResults.multiHandLandmarks;
+                const handednessList = latestHandResults.multiHandedness || [];
+
+                for (let i = 0; i < landmarksList.length; i++) {
+                    const lm = landmarksList[i];
+                    // Note: Since webcam feed is mirrored horizontally for natural AR interaction,
+                    // MediaPipe's "Left" label corresponds to the user's physical Right hand on screen.
+                    const mpLabel = handednessList[i] && handednessList[i].label ? handednessList[i].label : (i === 0 ? 'Left' : 'Right');
+                    const isPhysicalRight = mpLabel === 'Left';
+                    const handObj = isPhysicalRight ? HandTracker.right : HandTracker.left;
+
+                    if (isPhysicalRight) sawRight = true;
+                    else sawLeft = true;
+
+                    // Convert normalized landmarks into mirrored canvas coordinates
+                    const mirroredLm = lm.map(pt => ({
+                        x: (1 - pt.x) * canvasW,
+                        y: pt.y * canvasH,
+                        z: pt.z
+                    }));
+                    handObj.landmarks = mirroredLm;
+
+                    // Calculate fist curl ratio (0..1)
+                    const curlRatio = computeHandFistRatio(lm);
+                    handObj.curlRatio = curlRatio;
+                    const isFist = AppState.requireFistForSticks
+                        ? (curlRatio >= AppState.fistThreshold)
+                        : true;
+
+                    // Compute natural drumstick grip center (between Index MCP #5 and Pinky MCP #17)
+                    const indexMcp = mirroredLm[5];
+                    const middleMcp = mirroredLm[9];
+                    const pinkyMcp = mirroredLm[17];
+                    const wrist = mirroredLm[0];
+
+                    const gripX = indexMcp.x * 0.65 + middleMcp.x * 0.35;
+                    const gripY = indexMcp.y * 0.65 + middleMcp.y * 0.35;
+
+                    // Compute natural drumstick angle:
+                    // Projects from Pinky MCP (#17) through Index MCP (#5) tilted slightly toward the thumb/foreward axis
+                    let dx = indexMcp.x - pinkyMcp.x;
+                    let dy = indexMcp.y - pinkyMcp.y;
+
+                    // Also blend with wrist-to-middle-knuckle vector so downward wrist snaps tilt the stick down!
+                    const wristToKnuckleX = middleMcp.x - wrist.x;
+                    const wristToKnuckleY = middleMcp.y - wrist.y;
+
+                    // Point sticks inward and downward naturally toward the drum kit in front of user
+                    const inwardSign = isPhysicalRight ? -1 : 1;
+                    const blendedDx = dx * 0.55 + wristToKnuckleX * 0.45 + inwardSign * 28;
+                    const blendedDy = dy * 0.55 + wristToKnuckleY * 0.75 + 25;
+
+                    const targetAngle = Math.atan2(blendedDy, blendedDx);
+
+                    updateHandKinematics(handObj, gripX, gripY, targetAngle, isFist, dtMs, canvasW, canvasH);
+                }
+            }
+
+            if (!sawRight) {
+                HandTracker.right.detected = false;
+                HandTracker.right.isFist = false;
+                HandTracker.right.trail = [];
+            }
+            if (!sawLeft) {
+                HandTracker.left.detected = false;
+                HandTracker.left.isFist = false;
+                HandTracker.left.trail = [];
+            }
+
+            updateHandStatusBadges();
+        }
+
+        function updateHandStatusBadges() {
+            const updateOne = (hand, badgeId, textId) => {
+                const badge = document.getElementById(badgeId);
+                const text = document.getElementById(textId);
+                if (!hand.detected) {
+                    badge.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+                    text.textContent = 'عدم تشخیص';
+                    text.className = 'font-bold text-slate-400';
+                } else if (hand.isFist) {
+                    badge.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+                    const pct = Math.round(hand.curlRatio * 100);
+                    text.textContent = `مشت / چوب فعال (${pct}%)`;
+                    text.className = 'font-bold text-emerald-400';
+                } else {
+                    badge.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+                    const pct = Math.round(hand.curlRatio * 100);
+                    text.textContent = `دست باز (${pct}% مشت کنید)`;
+                    text.className = 'font-bold text-amber-300';
+                }
+            };
+            updateOne(HandTracker.right, 'rh-badge', 'rh-state-text');
+            updateOne(HandTracker.left, 'lh-badge', 'lh-state-text');
+        }
+
+        function resizeCanvas() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function renderStudioStage(now) {
+            const dtMs = Math.max(8, now - AppState.lastFrameTime);
+            AppState.lastFrameTime = now;
+
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. Render Mirrored Camera Feed OR Atmospheric Studio Stage Background
+            if (AppState.cameraActive && videoElement.readyState >= 2) {
+                ctx.save();
+                ctx.translate(w, 0);
+                ctx.scale(-1, 1);
+
+                // Cover-fit video into canvas
+                const vw = videoElement.videoWidth || 1280;
+                const vh = videoElement.videoHeight || 720;
+                const scale = Math.max(w / vw, h / vh);
+                const drawW = vw * scale;
+                const drawH = vh * scale;
+                const offsetX = (w - drawW) / 2;
+                const offsetY = (h - drawH) / 2;
+
+                ctx.drawImage(videoElement, offsetX, offsetY, drawW, drawH);
+                ctx.restore();
+
+                // Subtle studio vignette overlay so AR instruments pop with high contrast
+                const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.25, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+                vig.addColorStop(0, 'rgba(7, 9, 14, 0.12)');
+                vig.addColorStop(1, 'rgba(7, 9, 14, 0.62)');
+                ctx.fillStyle = vig;
+                ctx.fillRect(0, 0, w, h);
+            } else {
+                // Dark acoustic studio backdrop grid
+                const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.4, 40, w * 0.5, h * 0.6, Math.max(w, h) * 0.8);
+                bgGrad.addColorStop(0, '#1e293b');
+                bgGrad.addColorStop(0.55, '#0f172a');
+                bgGrad.addColorStop(1, '#05070b');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, w, h);
+
+                // Subtle perspective stage lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < w; x += 64) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, h);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < h; y += 64) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(w, y);
+                    ctx.stroke();
+                }
+            }
+
+            // 2. Update Hand Landmarks & Stick Physics
+            if (AppState.cameraActive) {
+                updateHandsFromMediaPipe(dtMs, w, h);
+            }
+
+            // 3. Draw Metallic Drum Stands / Hardware first (behind pads)
+            drawDrumHardwareStands(ctx, w, h);
+
+            // 4. Draw Realistic 2.5D Drum & Cymbal Pads
+            drawDrumKitPads(ctx, w, h, dtMs);
+
+            // 5. Draw Hand Skeletons & Wooden Drumsticks (when fist is made!)
+            if (HandTracker.left.detected) {
+                drawTrackedHandAndStick(ctx, HandTracker.left, w, h);
+            }
+            if (HandTracker.right.detected) {
+                drawTrackedHandAndStick(ctx, HandTracker.right, w, h);
+            }
+            if (HandTracker.pointer.detected) {
+                drawVirtualPointerStick(ctx, HandTracker.pointer, w, h);
+            }
+
+            // 6. Draw Floating Velocity & Frequency Telemetry Markers
+            drawFloatingHitMarkers(ctx);
+
+            requestAnimationFrame(renderStudioStage);
+        }
+
+        function drawDrumHardwareStands(ctx, w, h) {
+            ctx.save();
+            ctx.globalAlpha = AppState.padOpacity * 0.75;
+            for (const pad of drumPads) {
+                const cx = pad.rx * w;
+                const cy = pad.ry * h;
+                if (pad.type === 'cymbal' || pad.type === 'hihat') {
+                    // Chrome stand extending to bottom of frame
+                    const standGrad = ctx.createLinearGradient(cx - 4, cy, cx + 4, cy);
+                    standGrad.addColorStop(0, '#475569');
+                    standGrad.addColorStop(0.5, '#e2e8f0');
+                    standGrad.addColorStop(1, '#334155');
+                    ctx.strokeStyle = standGrad;
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(cx + (pad.rx < 0.5 ? -18 : 18), h * 0.95);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawDrumKitPads(ctx, w, h, dtMs) {
+            const minDim = Math.min(w, h);
+
+            for (const pad of drumPads) {
+                // Decay vibration energy smoothly
+                pad.hitEnergy = Math.max(0, pad.hitEnergy - dtMs * 0.0045);
+                pad.hitPhase += dtMs * 0.045;
+
+                const wobbleX = Math.sin(pad.hitPhase) * pad.hitEnergy * 4.5;
+                const wobbleY = Math.cos(pad.hitPhase * 1.3) * pad.hitEnergy * 3.5;
+                const scaleBoost = 1 + pad.hitEnergy * 0.06;
+
+                const cx = pad.rx * w + wobbleX;
+                const cy = pad.ry * h + wobbleY;
+                const rx = pad.rr * minDim * scaleBoost;
+                const ry = rx * pad.tilt;
+
+                ctx.save();
+                ctx.globalAlpha = AppState.padOpacity;
+
+                // 3D Shell Depth (Underneath drumhead or kick)
+                if (pad.type === 'tom' || pad.type === 'snare' || pad.type === 'kick') {
+                    const shellDepth = pad.type === 'kick' ? ry * 0.42 : (pad.id === 'floortom' ? ry * 0.36 : ry * 0.24);
+                    const shellGrad = ctx.createLinearGradient(cx - rx, cy, cx + rx, cy + shellDepth);
+                    shellGrad.addColorStop(0, '#0f172a');
+                    shellGrad.addColorStop(0.35, pad.color);
+                    shellGrad.addColorStop(0.7, '#1e293b');
+                    shellGrad.addColorStop(1, '#090d16');
+
+                    ctx.fillStyle = shellGrad;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy + shellDepth, rx, ry, 0, 0, Math.PI);
+                    ctx.lineTo(cx - rx, cy);
+                    ctx.ellipse(cx, cy, rx, ry, 0, Math.PI, 0, true);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Glow aura when struck
+                if (pad.hitEnergy > 0.02) {
+                    ctx.shadowColor = pad.color;
+                    ctx.shadowBlur = 18 + pad.hitEnergy * 28;
+                }
+
+                if (pad.type === 'cymbal' || pad.type === 'hihat') {
+                    // Metallic Bronze Cymbal Surface with Lathed Concentric Grooves
+                    const cymGrad = ctx.createRadialGradient(cx - rx * 0.2, cy - ry * 0.2, rx * 0.05, cx, cy, rx);
+                    cymGrad.addColorStop(0, '#fef9c3');
+                    cymGrad.addColorStop(0.22, '#f59e0b');
+                    cymGrad.addColorStop(0.62, '#b45309');
+                    cymGrad.addColorStop(0.88, '#fbbf24');
+                    cymGrad.addColorStop(1, '#78350f');
+
+                    ctx.fillStyle = cymGrad;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Concentric acoustic lathing rings
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+                    ctx.lineWidth = 1;
+                    for (let rRatio = 0.38; rRatio < 0.95; rRatio += 0.14) {
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, rx * rRatio, ry * rRatio, 0, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+
+                    // Cymbal Bell Zone (Center Dome)
+                    const bellGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, rx * 0.28);
+                    bellGrad.addColorStop(0, '#ffffff');
+                    bellGrad.addColorStop(0.6, '#fcd34d');
+                    bellGrad.addColorStop(1, '#92400e');
+                    ctx.fillStyle = bellGrad;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, rx * 0.27, ry * 0.27, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Center mounting felts & nut
+                    ctx.fillStyle = '#1e293b';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, rx * 0.06, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Acoustic Drum Head (Coated White / Translucent Mylar) + Chrome Hoop Rim
+                    // Outer Chrome Hoop
+                    ctx.lineWidth = Math.max(4, rx * 0.09);
+                    ctx.strokeStyle = pad.hitEnergy > 0.15 && pad.lastZone === 'edge' ? pad.accent : '#cbd5e1';
+
+                    const headGrad = ctx.createRadialGradient(cx, cy, rx * 0.05, cx, cy, rx);
+                    if (pad.type === 'snare') {
+                        headGrad.addColorStop(0, 'rgba(248, 250, 252, 0.92)');
+                        headGrad.addColorStop(0.65, 'rgba(226, 232, 240, 0.82)');
+                        headGrad.addColorStop(1, 'rgba(100, 116, 139, 0.9)');
+                    } else if (pad.type === 'kick') {
+                        headGrad.addColorStop(0, 'rgba(30, 41, 59, 0.92)');
+                        headGrad.addColorStop(0.55, 'rgba(15, 23, 42, 0.88)');
+                        headGrad.addColorStop(1, pad.color);
+                    } else {
+                        headGrad.addColorStop(0, 'rgba(241, 245, 249, 0.86)');
+                        headGrad.addColorStop(0.70, 'rgba(203, 213, 225, 0.72)');
+                        headGrad.addColorStop(1, pad.color);
+                    }
+
+                    ctx.fillStyle = headGrad;
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Inner Center Sweet-Spot Ring (shows Center vs Rimshot boundary)
+                    ctx.strokeStyle = pad.type === 'kick' ? 'rgba(249, 115, 22, 0.45)' : 'rgba(15, 23, 42, 0.22)';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, rx * 0.72, ry * 0.72, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Draw Expanding Shockwave Ripples on the Drumhead
+                for (let i = pad.ripples.length - 1; i >= 0; i--) {
+                    const rp = pad.ripples[i];
+                    rp.radius += dtMs * 0.35;
+                    rp.alpha -= dtMs * 0.0028;
+                    if (rp.alpha <= 0) {
+                        pad.ripples.splice(i, 1);
+                        continue;
+                    }
+                    ctx.strokeStyle = pad.accent;
+                    ctx.globalAlpha = rp.alpha * AppState.padOpacity;
+                    ctx.lineWidth = 2 + rp.velocity * 3;
+                    ctx.beginPath();
+                    ctx.ellipse(rp.x, rp.y, rp.radius, rp.radius * pad.tilt, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Pad Labels & Keyboard Shortcut Hint
+                ctx.globalAlpha = 0.95;
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = '#000';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = (pad.type === 'snare' || pad.type === 'tom') ? '#0f172a' : '#ffffff';
+                ctx.font = `800 ${Math.max(11, Math.round(rx * 0.20))}px Vazirmatn, sans-serif`;
+                ctx.fillText(pad.shortName, cx, cy + 4);
+
+                ctx.font = `600 ${Math.max(9, Math.round(rx * 0.13))}px Vazirmatn, sans-serif`;
+                ctx.fillStyle = (pad.type === 'snare' || pad.type === 'tom') ? '#334155' : '#fde68a';
+                const extraLabel = pad.type === 'hihat'
+                    ? (AppState.hiHatClosed ? 'بسته [3]' : 'باز [3]')
+                    : `[کلید ${pad.key === ' ' ? 'Space' : pad.key}]`;
+                ctx.fillText(extraLabel, cx, cy + rx * 0.24);
+
+                // Layout Edit Mode Handles
+                if (AppState.editLayoutMode) {
+                    ctx.strokeStyle = '#22d3ee';
+                    ctx.lineWidth = 2.5;
+                    ctx.setLineDash([6, 4]);
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, rx + 6, ry + 6, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Resize handle on right edge
+                    ctx.fillStyle = '#22d3ee';
+                    ctx.beginPath();
+                    ctx.arc(cx + rx + 6, cy, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        const HAND_CONNECTIONS = [
+            [0,1],[1,2],[2,3],[3,4],       // Thumb
+            [0,5],[5,6],[6,7],[7,8],       // Index
+            [5,9],[9,10],[10,11],[11,12],  // Middle
+            [9,13],[13,14],[14,15],[15,16],// Ring
+            [13,17],[0,17],[17,18],[18,19],[19,20] // Pinky & Palm
+        ];
+
+        function drawTrackedHandAndStick(ctx, hand, w, h) {
+            ctx.save();
+
+            // 1. Draw Hand Landmarks Skeleton
+            if (hand.landmarks) {
+                ctx.strokeStyle = hand.isFist ? hand.color : 'rgba(255, 255, 255, 0.45)';
+                ctx.lineWidth = hand.isFist ? 3 : 2;
+
+                for (const [a, b] of HAND_CONNECTIONS) {
+                    const ptA = hand.landmarks[a];
+                    const ptB = hand.landmarks[b];
+                    ctx.beginPath();
+                    ctx.moveTo(ptA.x, ptA.y);
+                    ctx.lineTo(ptB.x, ptB.y);
+                    ctx.stroke();
+                }
+
+                for (let i = 0; i < hand.landmarks.length; i++) {
+                    const pt = hand.landmarks[i];
+                    ctx.fillStyle = i === 0 ? '#ffffff' : (hand.isFist ? hand.color : '#94a3b8');
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, i === 5 || i === 9 ? 5 : 3.2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // 2. If Hand is in a Fist (or Fist Requirement is Toggled Off), Render Realistic Drumstick in Hand!
+            if (hand.isFist) {
+                drawWoodenDrumstick(ctx, hand, w, h);
+            } else {
+                // Visual prompt ring around open hand showing how close user is to forming a fist
+                ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(hand.gripX, hand.gripY, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (hand.curlRatio / AppState.fistThreshold));
+                ctx.stroke();
+
+                ctx.fillStyle = '#fde68a';
+                ctx.font = 'bold 11px Vazirmatn, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('دست را مشت کنید تا چوب فعال شود', hand.gripX, hand.gripY - 34);
+            }
+
+            ctx.restore();
+        }
+
+        function drawWoodenDrumstick(ctx, hand, w, h) {
+            // 1. Draw high-speed motion ribbon trail behind the stick tip
+            if (hand.trail.length > 1) {
+                for (let i = 1; i < hand.trail.length; i++) {
+                    const p0 = hand.trail[i - 1];
+                    const p1 = hand.trail[i];
+                    const ratio = i / hand.trail.length;
+                    ctx.strokeStyle = hand.color;
+                    ctx.globalAlpha = ratio * 0.55;
+                    ctx.lineWidth = ratio * 10;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(p0.x, p0.y);
+                    ctx.lineTo(p1.x, p1.y);
+                    ctx.stroke();
+                }
+            }
+
+            ctx.globalAlpha = 1.0;
+
+            // 2. Calculate butt-end of stick (extending slightly behind the closed fist) and tip-end
+            const backOffset = Math.min(w, h) * 0.055;
+            const buttX = hand.gripX - Math.cos(hand.stickAngle) * backOffset;
+            const buttY = hand.gripY - Math.sin(hand.stickAngle) * backOffset;
+
+            // Hickory wood gradient along stick shaft
+            const woodGrad = ctx.createLinearGradient(buttX, buttY, hand.tipX, hand.tipY);
+            woodGrad.addColorStop(0, '#78350f');
+            woodGrad.addColorStop(0.2, '#b45309');
+            woodGrad.addColorStop(0.55, '#f59e0b');
+            woodGrad.addColorStop(0.88, '#fde68a');
+            woodGrad.addColorStop(1, '#ffffff');
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+            ctx.shadowBlur = 10;
+
+            // Tapered drumstick shaft
+            const perpAngle = hand.stickAngle + Math.PI / 2;
+            const buttRadius = 6.5;
+            const tipNeckRadius = 2.6;
+
+            ctx.fillStyle = woodGrad;
+            ctx.beginPath();
+            ctx.moveTo(buttX + Math.cos(perpAngle) * buttRadius, buttY + Math.sin(perpAngle) * buttRadius);
+            ctx.lineTo(hand.tipX + Math.cos(perpAngle) * tipNeckRadius, hand.tipY + Math.sin(perpAngle) * tipNeckRadius);
+            ctx.lineTo(hand.tipX - Math.cos(perpAngle) * tipNeckRadius, hand.tipY - Math.sin(perpAngle) * tipNeckRadius);
+            ctx.lineTo(buttX - Math.cos(perpAngle) * buttRadius, buttY - Math.sin(perpAngle) * buttRadius);
+            ctx.closePath();
+            ctx.fill();
+
+            // Grip Wrap Tape at the Fist location
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 11;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(hand.gripX - Math.cos(hand.stickAngle) * 14, hand.gripY - Math.sin(hand.stickAngle) * 14);
+            ctx.lineTo(hand.gripX + Math.cos(hand.stickAngle) * 18, hand.gripY + Math.sin(hand.stickAngle) * 18);
+            ctx.stroke();
+
+            // Acorn Drumstick Tip with Velocity Glow
+            const speedGlow = Math.min(1, hand.speed / 2.2);
+            ctx.shadowColor = hand.color;
+            ctx.shadowBlur = 12 + speedGlow * 22;
+            ctx.fillStyle = speedGlow > 0.35 ? '#ffffff' : hand.color;
+            ctx.beginPath();
+            ctx.ellipse(hand.tipX, hand.tipY, 7.5, 5.2, hand.stickAngle, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawVirtualPointerStick(ctx, pointerHand, w, h) {
+            if (!pointerHand.isFist) return;
+            drawWoodenDrumstick(ctx, pointerHand, w, h);
+        }
+
+        function drawFloatingHitMarkers(ctx) {
+            ctx.save();
+            for (let i = floatingHitMarkers.length - 1; i >= 0; i--) {
+                const m = floatingHitMarkers[i];
+                m.y -= 1.4;
+                m.alpha -= 0.022;
+                if (m.alpha <= 0) {
+                    floatingHitMarkers.splice(i, 1);
+                    continue;
+                }
+                ctx.globalAlpha = m.alpha;
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#000';
+                ctx.shadowBlur = 6;
+                ctx.fillStyle = m.color;
+                ctx.font = `900 ${Math.round(14 * m.scale)}px Vazirmatn, sans-serif`;
+                ctx.fillText(m.text, m.x, m.y);
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.font = `600 ${Math.round(10 * m.scale)}px Vazirmatn, sans-serif`;
+                ctx.fillText(m.subText, m.x, m.y + 14);
+            }
+            ctx.restore();
+        }
+
+        let pointerIdleTimer = null;
+
+        function handlePointerDown(e) {
+            audioEngine.init();
+            const rect = canvasElement.getBoundingClientRect();
+            const px = e.clientX - rect.left;
+            const py = e.clientY - rect.top;
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+            const minDim = Math.min(w, h);
+
+            // Check if in Layout Edit Mode -> Drag or Resize drum pad
+            if (AppState.editLayoutMode) {
+                for (let i = drumPads.length - 1; i >= 0; i--) {
+                    const pad = drumPads[i];
+                    const cx = pad.rx * w;
+                    const cy = pad.ry * h;
+                    const rx = pad.rr * minDim;
+                    const ry = rx * pad.tilt;
+
+                    // Check resize handle first
+                    if (Math.hypot(px - (cx + rx + 6), py - cy) < 20) {
+                        AppState.resizingPad = pad;
+                        return;
+                    }
+                    // Check pad body for dragging
+                    if (Math.hypot((px - cx) / rx, (py - cy) / ry) <= 1.1) {
+                        AppState.draggingPad = { pad, offsetX: px - cx, offsetY: py - cy };
+                        return;
+                    }
+                }
+                return;
+            }
+
+            // Direct Strike on Drum Pad with Velocity Based on Radial Position or Pointer Speed
+            for (let i = drumPads.length - 1; i >= 0; i--) {
+                const pad = drumPads[i];
+                const cx = pad.rx * w;
+                const cy = pad.ry * h;
+                const rx = pad.rr * minDim;
+                const ry = rx * pad.tilt;
+                const normDist = Math.hypot((px - cx) / rx, (py - cy) / ry);
+
+                if (normDist <= 1.04) {
+                    const pointerSpeedBoost = Math.min(0.35, HandTracker.pointer.speed * 0.25);
+                    const vel = Math.min(1.0, 0.68 + pointerSpeedBoost);
+                    let zone = 'center';
+                    if (pad.type === 'cymbal' || pad.type === 'hihat') {
+                        zone = normDist < 0.34 ? 'bell' : 'edge';
+                    } else {
+                        zone = normDist > 0.74 ? 'edge' : 'center';
+                    }
+                    executeDrumStrike(pad, vel, zone, px, py, true);
+                    break;
+                }
+            }
+        }
+
+        function handlePointerMove(e) {
+            const rect = canvasElement.getBoundingClientRect();
+            const px = e.clientX - rect.left;
+            const py = e.clientY - rect.top;
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+            const minDim = Math.min(w, h);
+
+            if (AppState.editLayoutMode) {
+                if (AppState.draggingPad) {
+                    const { pad, offsetX, offsetY } = AppState.draggingPad;
+                    pad.rx = Math.max(0.08, Math.min(0.92, (px - offsetX) / w));
+                    pad.ry = Math.max(0.14, Math.min(0.86, (py - offsetY) / h));
+                } else if (AppState.resizingPad) {
+                    const pad = AppState.resizingPad;
+                    const cx = pad.rx * w;
+                    const newRadiusPx = Math.max(35, Math.min(minDim * 0.22, Math.abs(px - cx)));
+                    pad.rr = newRadiusPx / minDim;
+                }
+                return;
+            }
+
+            // Virtual drumstick follows mouse/touch so user can also swing across drums!
+            const stickLen = minDim * 0.27;
+            const targetAngle = -Math.PI * 0.38;
+            const gripX = px - Math.cos(targetAngle) * stickLen;
+            const gripY = py - Math.sin(targetAngle) * stickLen;
+
+            updateHandKinematics(HandTracker.pointer, gripX, gripY, targetAngle, true, 16, w, h);
+
+            clearTimeout(pointerIdleTimer);
+            pointerIdleTimer = setTimeout(() => {
+                HandTracker.pointer.detected = false;
+                HandTracker.pointer.isFist = false;
+            }, 1200);
+        }
+
+        function handlePointerUp() {
+            AppState.draggingPad = null;
+            AppState.resizingPad = null;
+        }
+
+        canvasElement.addEventListener('pointerdown', handlePointerDown);
+        canvasElement.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+
+        // Keyboard Studio Shortcuts (1-7, Space for Kick, Shift for Hi-Hat Pedal)
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            if (e.key === 'Shift') {
+                toggleHiHatPedal(false);
+                return;
+            }
+            const pad = drumPads.find(p => p.key === e.key);
+            if (pad) {
+                e.preventDefault();
+                audioEngine.init();
+                executeDrumStrike(pad, 0.82, 'center', undefined, undefined, true);
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                toggleHiHatPedal(true);
+            }
+        });
+
+        function toggleHiHatPedal(closedState) {
+            AppState.hiHatClosed = closedState !== undefined ? closedState : !AppState.hiHatClosed;
+            const dot = document.getElementById('hh-pedal-dot');
+            const label = document.getElementById('hh-pedal-state');
+            if (AppState.hiHatClosed) {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+                label.textContent = 'حالت: بسته (Closed)';
+                // Play subtle pedal chick sound when closing
+                const hhPad = drumPads.find(p => p.id === 'hihat');
+                if (hhPad) audioEngine.triggerPad(hhPad, 0.35, 'center');
+            } else {
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse';
+                label.textContent = 'حالت: باز (Open Wash)';
+            }
+        }
+
+        // Metronome Scheduler
+        let metronomeTimer = null;
+        let currentBeat = 0;
+
+        function updateMetronomeScheduler() {
+            if (metronomeTimer) {
+                clearInterval(metronomeTimer);
+                metronomeTimer = null;
+            }
+            const dots = document.getElementById('beat-dots').children;
+            for (let d of dots) d.className = 'w-2 h-2 rounded-full bg-slate-600';
+
+            if (!AppState.metronomeOn) return;
+
+            const intervalMs = (60 / AppState.bpm) * 1000;
+            const tick = () => {
+                if (!AppState.metronomeOn) return;
+                const isDownbeat = (currentBeat % 4) === 0;
+                audioEngine.playMetronomeClick(isDownbeat);
+
+                for (let i = 0; i < 4; i++) {
+                    dots[i].className = i === (currentBeat % 4)
+                        ? (isDownbeat ? 'w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]' : 'w-2 h-2 rounded-full bg-cyan-400')
+                        : 'w-2 h-2 rounded-full bg-slate-600';
+                }
+                currentBeat = (currentBeat + 1) % 4;
+            };
+            tick();
+            metronomeTimer = setInterval(tick, intervalMs);
+        }
+
+        // Loop Recorder Controls
+        function updateRecorderUI() {
+            const playBtn = document.getElementById('btn-play-loop');
+            const loopLabel = document.getElementById('loop-label');
+            const count = AppState.recordedEvents.length;
+            playBtn.disabled = count === 0;
+            loopLabel.textContent = AppState.isPlayingLoop ? `توقف لوپ (${count})` : `پخش لوپ (${count})`;
+        }
+
+        function stopLoopPlayback() {
+            AppState.isPlayingLoop = false;
+            AppState.loopTimerIds.forEach(id => clearTimeout(id));
+            AppState.loopTimerIds = [];
+            updateRecorderUI();
+        }
+
+        function startLoopPlayback() {
+            if (AppState.recordedEvents.length === 0) return;
+            AppState.isPlayingLoop = true;
+            updateRecorderUI();
+
+            const duration = Math.max(800, AppState.loopDuration);
+            const schedulePass = () => {
+                if (!AppState.isPlayingLoop) return;
+                for (const ev of AppState.recordedEvents) {
+                    const tid = setTimeout(() => {
+                        if (!AppState.isPlayingLoop) return;
+                        const pad = drumPads.find(p => p.id === ev.padId);
+                        if (pad) executeDrumStrike(pad, ev.velocity, ev.zone, undefined, undefined, false);
+                    }, ev.timeOffset);
+                    AppState.loopTimerIds.push(tid);
+                }
+                const nextLoopTid = setTimeout(schedulePass, duration);
+                AppState.loopTimerIds.push(nextLoopTid);
+            };
+            schedulePass();
+        }
+
+        // Wire up DOM Controls
+        document.getElementById('btn-start-studio').addEventListener('click', () => {
+            initMediaPipeAndCamera();
+        });
+
+        document.getElementById('btn-start-without-cam').addEventListener('click', () => {
+            audioEngine.init();
+            document.getElementById('onboarding-card').classList.add('hidden');
+            document.getElementById('status-subtitle').textContent = 'حالت استودیو بدون دوربین • با حرکت ماوس یا لمس صفحه روی سازها ضربه بزنید';
+        });
+
+        document.getElementById('btn-toggle-camera').addEventListener('click', () => {
+            if (AppState.cameraActive) stopCameraStream();
+            else initMediaPipeAndCamera();
+        });
+
+        document.getElementById('btn-edit-layout').addEventListener('click', (e) => {
+            AppState.editLayoutMode = !AppState.editLayoutMode;
+            const btn = e.currentTarget;
+            if (AppState.editLayoutMode) {
+                btn.classList.add('neon-cyan', 'border-cyan-400', 'text-cyan-300');
+                document.getElementById('status-subtitle').textContent = 'حالت ویرایش چیدمان فعال است • هر ساز را بکشید یا دایره آبی کنار آن را برای تغییر سایز جابجا کنید';
+            } else {
+                btn.classList.remove('neon-cyan', 'border-cyan-400', 'text-cyan-300');
+                document.getElementById('status-subtitle').textContent = 'چیدمان ذخیره شد • آماده نواختن';
+            }
+        });
+
+        // Settings Drawer Toggle
+        const drawer = document.getElementById('settings-drawer');
+        let drawerOpen = false;
+        function toggleDrawer(force) {
+            drawerOpen = force !== undefined ? force : !drawerOpen;
+            if (drawerOpen) {
+                drawer.classList.remove('-translate-x-[120%]', 'opacity-0', 'pointer-events-none');
+                drawer.classList.add('translate-x-0', 'opacity-100', 'pointer-events-auto');
+            } else {
+                drawer.classList.add('-translate-x-[120%]', 'opacity-0', 'pointer-events-none');
+                drawer.classList.remove('translate-x-0', 'opacity-100', 'pointer-events-auto');
+            }
+        }
+        document.getElementById('btn-settings-drawer').addEventListener('click', () => toggleDrawer());
+        document.getElementById('btn-close-drawer').addEventListener('click', () => toggleDrawer(false));
+
+        // Settings Inputs
+        document.getElementById('select-kit-preset').addEventListener('change', (e) => {
+            AppState.kitPreset = e.target.value;
+        });
+
+        document.getElementById('chk-require-fist').addEventListener('change', (e) => {
+            AppState.requireFistForSticks = e.target.checked;
+        });
+
+        document.getElementById('rng-fist-sens').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            AppState.fistThreshold = val / 100;
+            document.getElementById('val-fist-sens').textContent = `${val}%`;
+        });
+
+        document.getElementById('rng-vel-sens').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10) / 10;
+            AppState.velocitySensitivity = val;
+            document.getElementById('val-vel-sens').textContent = `${val.toFixed(1)}x`;
+        });
+
+        document.getElementById('rng-reverb').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            AppState.reverbAmount = val / 100;
+            document.getElementById('val-reverb').textContent = `${val}%`;
+            audioEngine.setReverbLevel(AppState.reverbAmount);
+        });
+
+        document.getElementById('rng-pad-opacity').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            AppState.padOpacity = val / 100;
+            document.getElementById('val-pad-opacity').textContent = `${val}%`;
+        });
+
+        document.getElementById('btn-reset-layout').addEventListener('click', () => {
+            resetDrumKitLayout();
+        });
+
+        // Bottom Dock Controls
+        document.getElementById('btn-hihat-pedal').addEventListener('click', () => {
+            audioEngine.init();
+            toggleHiHatPedal();
+        });
+
+        document.getElementById('btn-kick-pedal').addEventListener('click', () => {
+            audioEngine.init();
+            const kickPad = drumPads.find(p => p.id === 'kick');
+            if (kickPad) executeDrumStrike(kickPad, 0.90, 'center', undefined, undefined, true);
+        });
+
+        document.getElementById('btn-metronome').addEventListener('click', (e) => {
+            audioEngine.init();
+            AppState.metronomeOn = !AppState.metronomeOn;
+            e.currentTarget.classList.toggle('neon-amber', AppState.metronomeOn);
+            updateMetronomeScheduler();
+        });
+
+        document.getElementById('rng-bpm').addEventListener('input', (e) => {
+            AppState.bpm = parseInt(e.target.value, 10);
+            document.getElementById('bpm-display').textContent = `${AppState.bpm} BPM`;
+            if (AppState.metronomeOn) updateMetronomeScheduler();
+        });
+
+        document.getElementById('btn-record').addEventListener('click', () => {
+            audioEngine.init();
+            const recDot = document.getElementById('rec-dot');
+            const recLabel = document.getElementById('rec-label');
+            if (!AppState.isRecording) {
+                stopLoopPlayback();
+                AppState.recordedEvents = [];
+                AppState.recordStartTime = performance.now();
+                AppState.isRecording = true;
+                recDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping';
+                recLabel.textContent = 'پایان ضبط';
+            } else {
+                AppState.isRecording = false;
+                AppState.loopDuration = performance.now() - AppState.recordStartTime;
+                recDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+                recLabel.textContent = 'ضبط ریتم';
+                updateRecorderUI();
+            }
+        });
+
+        document.getElementById('btn-play-loop').addEventListener('click', () => {
+            if (AppState.isPlayingLoop) stopLoopPlayback();
+            else startLoopPlayback();
+        });
+
+        document.getElementById('btn-clear-loop').addEventListener('click', () => {
+            stopLoopPlayback();
+            AppState.recordedEvents = [];
+            updateRecorderUI();
+        });
+
+        // Start Main Render Loop on Window Load
+        window.onload = function () {
+            requestAnimationFrame(renderStudioStage);
+        };
+    </script>
+</body>
+</html>
