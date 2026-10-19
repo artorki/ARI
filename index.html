@@ -1,1586 +1,2421 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>استودیو پیانو واقعیت افزوده | AR Grand Piano Simulator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- MediaPipe Hands & Camera Utils -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-
-  <style>
-    * {
-      box-sizing: border-box;
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background-color: #050811;
-      font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
-      color: #f8fafc;
-    }
-    .font-mono-tech {
-      font-family: 'JetBrains Mono', monospace;
-      direction: ltr;
-    }
-    .glass-panel {
-      background: rgba(15, 23, 42, 0.72);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    }
-    .glass-pill {
-      background: rgba(15, 23, 42, 0.82);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-    }
-    /* Custom range sliders */
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      background: rgba(255, 255, 255, 0.15);
-      height: 6px;
-      border-radius: 999px;
-      outline: none;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #38bdf8;
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
-      transition: transform 0.15s ease;
-    }
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-    }
-    @keyframes pulse-record {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.15); }
-    }
-    .recording-dot {
-      animation: pulse-record 1.2s infinite ease-in-out;
-    }
-  </style>
-</head>
-
-<body class="relative w-screen h-screen overflow-hidden select-none">
-
-  <!-- Hidden raw video element for MediaPipe input -->
-  <video id="webcam-video" class="hidden" playsinline muted></video>
-
-  <!-- Full-screen AR Canvas (Mirrored video + 3D Hand Kinematics + Perspective Piano) -->
-  <canvas id="ar-canvas" class="fixed inset-0 w-full h-full block z-0 cursor-pointer"></canvas>
-
-  <!-- Top HUD Bar -->
-  <header class="fixed top-3 inset-x-3 md:top-4 md:inset-x-6 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شبیه‌ساز واقعیت افزوده سنتور ۹ خرک ایرانی | AR Iranian Santoor</title>
     
-    <!-- Brand & Tracking Status -->
-    <div class="glass-panel rounded-2xl px-4 py-2.5 flex items-center gap-3 pointer-events-auto">
-      <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg shadow-sky-500/30">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-        </svg>
-        <span id="status-led" class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 ring-2 ring-slate-900"></span>
-      </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <h1 class="text-sm md:text-base font-bold text-white tracking-tight">پیانو واقعیت افزوده</h1>
-          <span class="text-[10px] font-mono-tech uppercase px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 border border-sky-400/30">AR 60FPS</span>
-        </div>
-        <p id="tracking-status-text" class="text-xs text-slate-300">آماده اتصال به وب‌کم یا لمس مستقیم...</p>
-      </div>
-    </div>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vazirmatn Persian Font -->
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    
+    <!-- MediaPipe Hands & Camera Utils -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
-    <!-- Center Live Telemetry HUD (Note, Frequency, Velocity, Polyphony) -->
-    <div class="glass-panel rounded-2xl px-4 py-2 flex items-center gap-4 md:gap-6 pointer-events-auto">
-      <div class="text-center min-w-[72px]">
-        <span class="block text-[10px] text-slate-400">نت فعال</span>
-        <div id="hud-note-name" class="text-lg md:text-xl font-extrabold text-sky-400 font-mono-tech tracking-wider">--</div>
-      </div>
-      <div class="h-8 w-px bg-white/10"></div>
-      <div class="text-center min-w-[85px]">
-        <span class="block text-[10px] text-slate-400">فرکانس (Hz)</span>
-        <div id="hud-freq" class="text-sm md:text-base font-bold text-emerald-400 font-mono-tech">0.00 Hz</div>
-      </div>
-      <div class="h-8 w-px bg-white/10 hidden sm:block"></div>
-      <div class="hidden sm:flex flex-col min-w-[90px]">
-        <div class="flex justify-between text-[10px] text-slate-400 mb-1">
-          <span>شدت ضربه (Vel)</span>
-          <span id="hud-vel-num" class="font-mono-tech text-amber-300">0%</span>
-        </div>
-        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden border border-white/10">
-          <div id="hud-vel-bar" class="h-full bg-gradient-to-r from-emerald-400 via-sky-400 to-rose-500 transition-all duration-75" style="width: 0%"></div>
-        </div>
-      </div>
-      <div class="h-8 w-px bg-white/10 hidden md:block"></div>
-      <div class="hidden md:flex items-center gap-3 text-xs">
-        <div class="text-center">
-          <span class="block text-[10px] text-slate-400">نرخ فریم</span>
-          <span id="hud-fps" class="font-mono-tech font-bold text-slate-200">60 FPS</span>
-        </div>
-        <div class="text-center">
-          <span class="block text-[10px] text-slate-400">پلی‌فونی</span>
-          <span id="hud-polyphony" class="font-mono-tech font-bold text-indigo-300">0</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right Quick Actions -->
-    <div class="flex items-center gap-2 pointer-events-auto">
-      <!-- Camera Start/Stop Toggle -->
-      <button id="btn-camera" class="glass-panel hover:bg-sky-500/20 active:scale-95 transition-all rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs font-semibold text-sky-300 border border-sky-400/30">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-        </svg>
-        <span id="btn-camera-text">فعال‌سازی دوربین AR</span>
-      </button>
-
-      <!-- Sustain Pedal Toggle -->
-      <button id="btn-sustain" class="glass-panel hover:bg-amber-500/20 active:scale-95 transition-all rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs font-semibold text-slate-200 border border-white/15" title="میانبر کیبورد: کلید Space">
-        <span id="sustain-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500 transition-colors"></span>
-        <span>پدال Sustain</span>
-      </button>
-
-      <!-- Audio Recorder Button -->
-      <button id="btn-record" class="glass-panel hover:bg-rose-500/20 active:scale-95 transition-all rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs font-semibold text-rose-300 border border-rose-400/30">
-        <span id="record-dot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-        <span id="record-text">ضبط صدا</span>
-      </button>
-
-      <!-- Settings Drawer Toggle -->
-      <button id="btn-settings" class="glass-panel hover:bg-white/10 active:scale-95 transition-all rounded-xl p-2.5 text-slate-200" title="تنظیمات تخصصی">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-        </svg>
-      </button>
-    </div>
-  </header>
-
-  <!-- Collapsible Settings Panel -->
-  <aside id="settings-panel" class="fixed top-20 left-4 z-30 w-80 max-w-[calc(100vw-2rem)] glass-panel rounded-2xl p-4 transition-all duration-300 transform translate-x-0 opacity-100">
-    <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-      <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-sky-400"></span>
-        <h2 class="text-sm font-bold text-white">تنظیمات سینماتیک و صدا</h2>
-      </div>
-      <button id="btn-close-settings" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded-lg hover:bg-white/10">بستن</button>
-    </div>
-
-    <div class="space-y-3.5 text-xs">
-      <!-- Key Count / Octaves Selector -->
-      <div>
-        <div class="flex justify-between mb-1">
-          <label class="text-slate-300 font-medium">تعداد کلیدها (وسعت کیبورد):</label>
-          <span id="lbl-octaves" class="font-mono-tech text-sky-400 font-semibold">36 Keys (3 Oct)</span>
-        </div>
-        <div class="grid grid-cols-4 gap-1.5">
-          <button data-octaves="2" class="octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10">24 (2 Oct)</button>
-          <button data-octaves="3" class="octave-btn py-1.5 rounded-lg bg-sky-500/30 text-sky-200 font-mono-tech text-[11px] border border-sky-400/50 font-bold">36 (3 Oct)</button>
-          <button data-octaves="4" class="octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10">48 (4 Oct)</button>
-          <button data-octaves="5" class="octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10">61 (5 Oct)</button>
-        </div>
-      </div>
-
-      <!-- Base Octave Shift -->
-      <div>
-        <div class="flex justify-between mb-1">
-          <label class="text-slate-300 font-medium">اکتاو پایه شروع (Base Octave):</label>
-          <span id="lbl-base-octave" class="font-mono-tech text-sky-400">C3</span>
-        </div>
-        <input id="slider-base-octave" type="range" min="1" max="5" step="1" value="3" class="w-full" />
-      </div>
-
-      <!-- Strike Velocity Threshold (Vy) -->
-      <div>
-        <div class="flex justify-between mb-1">
-          <label class="text-slate-300 font-medium">حساسیت ضربه عمودی ($V_y$):</label>
-          <span id="lbl-vy-thresh" class="font-mono-tech text-emerald-400">حساس (متعادل)</span>
-        </div>
-        <input id="slider-vy-thresh" type="range" min="0.002" max="0.020" step="0.001" value="0.006" class="w-full" />
-      </div>
-
-      <!-- Anti-Transit Gating Ratio -->
-      <div>
-        <div class="flex justify-between mb-1">
-          <label class="text-slate-300 font-medium">فیلتر عبور افقی دست (Anti-Transit):</label>
-          <span id="lbl-transit" class="font-mono-tech text-amber-300">1.35x</span>
-        </div>
-        <input id="slider-transit" type="range" min="0.8" max="2.5" step="0.05" value="1.35" class="w-full" />
-      </div>
-
-      <!-- Concert Hall Reverb Mix -->
-      <div>
-        <div class="flex justify-between mb-1">
-          <label class="text-slate-300 font-medium">طنین سالن کنسرت (Reverb):</label>
-          <span id="lbl-reverb" class="font-mono-tech text-indigo-300">35%</span>
-        </div>
-        <input id="slider-reverb" type="range" min="0" max="0.85" step="0.05" value="0.35" class="w-full" />
-      </div>
-
-      <!-- Keyboard Y-Position / Ergonomics -->
-      <div>
-        <div class="flex justify-between mb-1">
-          <label class="text-slate-300 font-medium">ارتفاع کیبورد در تصویر:</label>
-          <span id="lbl-kb-height" class="font-mono-tech text-sky-300">پایین (ارگونومیک)</span>
-        </div>
-        <input id="slider-kb-pos" type="range" min="0.45" max="0.78" step="0.01" value="0.62" class="w-full" />
-      </div>
-
-      <!-- Download Recorded Audio Container (Hidden until recording finishes) -->
-      <div id="download-box" class="hidden pt-2 border-t border-white/10">
-        <a id="download-link" href="#" download="ar-piano-performance.webm" class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 hover:opacity-95 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          <span>دانلود فایل صوتی ضبط‌شده</span>
-        </a>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Floating Helper Legend (Top Right below header) -->
-  <div class="fixed top-20 right-4 z-20 glass-pill rounded-xl px-3.5 py-2 text-[11px] text-slate-300 hidden lg:flex items-center gap-4 pointer-events-none">
-    <div class="flex items-center gap-1.5">
-      <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span><span>شست</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span><span>اشاره</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>وسط</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span><span>انگشتری</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span><span>کوچک</span>
-    </div>
-    <span class="text-slate-500">|</span>
-    <span class="text-sky-300">حرکت رو به پایین ($V_y > 0$) = ضربه نت | حرکت افقی = عبور بی‌صدا</span>
-  </div>
-
-  <!-- Non-blocking Toast Message Box (No alert/confirm) -->
-  <div id="toast-message" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass-panel px-5 py-3 rounded-2xl text-xs md:text-sm font-medium text-white shadow-2xl border border-sky-400/40 transition-all duration-300 opacity-0 pointer-events-none translate-y-4">
-    پیام سیستم
-  </div>
-
-  <script>
-    /**
-     * ============================================================================
-     * AR GRAND PIANO SIMULATOR - SINGLE-FILE ULTRA-LOW LATENCY ENGINE
-     * ============================================================================
-     * Features:
-     * 1. Dual-Hand 3D MediaPipe Tracking (60 FPS) + Mirrored AR Viewport
-     * 2. Adaptive Exponential Moving Average (EMA) Filter (Zero lag on fast strikes, jitter-free at rest)
-     * 3. Anti-Transit & Collision Gating (Ignores horizontal octave shifts, triggers on downward Vy > 0)
-     * 4. 30ms Per-Key Cooldown + Accurate Note-Off release detection
-     * 5. Polyphonic Web Audio Grand Piano Synthesizer (Multi-harmonic + Hammer transient + Velocity LPF + Convolver Reverb)
-     * 6. Built-in MediaRecorder Performance Recorder & Mouse/Touch Fallback
-     */
-
-    const NOTE_NAMES_EN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    const NOTE_NAMES_FA = ['دو', 'دو دیز', 'ره', 'ره دیز', 'می', 'فا', 'فا دیز', 'سل', 'سل دیز', 'لا', 'لا دیز', 'سی'];
-    const BLACK_KEY_SEMITONES = new Set([1, 3, 6, 8, 10]);
-
-    // Fingertip landmark indices in MediaPipe Hands
-    const FINGERTIP_INDICES = [4, 8, 12, 16, 20];
-    const FINGER_COLORS = {
-      4: '#fb7185',  // Thumb - Rose
-      8: '#38bdf8',  // Index - Sky
-      12: '#34d399', // Middle - Emerald
-      16: '#fbbf24', // Ring - Amber
-      20: '#c084fc'  // Pinky - Purple
-    };
-
-    // Hand skeleton connection pairs for drawing AR bones
-    const HAND_CONNECTIONS = [
-      [0,1],[1,2],[2,3],[3,4],       // Thumb
-      [0,5],[5,6],[6,7],[7,8],       // Index
-      [0,9],[9,10],[10,11],[11,12],  // Middle
-      [0,13],[13,14],[14,15],[15,16],// Ring
-      [0,17],[17,18],[18,19],[19,20],// Pinky
-      [5,9],[9,13],[13,17],[0,17]    // Palm
-    ];
-
-    // Global Configuration State
-    const config = {
-      octaves: 3,               // Default 36 keys (3 octaves)
-      baseOctave: 3,            // Starts at C3 (MIDI 48)
-      vyStrikeThreshold: 0.006, // Minimum downward normalized velocity per frame to trigger strike
-      vyReleaseThreshold: -0.0035, // Upward velocity threshold for immediate Note-Off
-      antiTransitRatio: 1.35,   // Vy * ratio must exceed |Vx| to prevent horizontal transit triggers
-      keyCooldownMs: 30,        // 30ms anti-bounce cooldown per key
-      reverbMix: 0.35,          // Concert hall reverb wet level
-      keyboardTopRatio: 0.62,   // Vertical start of piano overlay (0.0 to 1.0)
-      sustainActive: false      // Sustain pedal state
-    };
-
-    // UI Elements
-    const videoEl = document.getElementById('webcam-video');
-    const canvas = document.getElementById('ar-canvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
-
-    let toastTimeout = null;
-    function showToast(msg, duration = 3200) {
-      const toast = document.getElementById('toast-message');
-      toast.textContent = msg;
-      toast.classList.remove('opacity-0', 'translate-y-4');
-      toast.classList.add('opacity-100', 'translate-y-0');
-      if (toastTimeout) clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => {
-        toast.classList.remove('opacity-100', 'translate-y-0');
-        toast.classList.add('opacity-0', 'translate-y-4');
-      }, duration);
-    }
-
-    /**
-     * Standard Piano Frequency Formula: f = 440 * 2^((n - 69) / 12)
-     */
-    function midiToFreq(midiNote) {
-      return 440 * Math.pow(2, (midiNote - 69) / 12);
-    }
-
-    function getMidiNoteLabel(midiNote) {
-      const semitone = midiNote % 12;
-      const octave = Math.floor(midiNote / 12) - 1;
-      return {
-        en: `${NOTE_NAMES_EN[semitone]}${octave}`,
-        fa: NOTE_NAMES_FA[semitone],
-        isBlack: BLACK_KEY_SEMITONES.has(semitone)
-      };
-    }
-
-    class PolyphonicPianoEngine {
-      constructor() {
-        this.ctx = null;
-        this.masterGain = null;
-        this.dryGain = null;
-        this.wetGain = null;
-        this.convolver = null;
-        this.compressor = null;
-        this.recorderDest = null;
-        this.mediaRecorder = null;
-        this.recordedChunks = [];
-        this.isRecording = false;
-        this.activeVoices = new Map(); // midiNote -> Voice object
-        this.sustainedNotes = new Set();
-        this.hammerNoiseBuffer = null;
-      }
-
-      init() {
-        if (this.ctx) {
-          if (this.ctx.state === 'suspended') this.ctx.resume();
-          return;
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        this.ctx = new AudioCtx({ latencyHint: 'interactive' });
-
-        // Dynamics Compressor to prevent clipping during rich chords
-        this.compressor = this.ctx.createDynamicsCompressor();
-        this.compressor.threshold.setValueAtTime(-14, this.ctx.currentTime);
-        this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
-        this.compressor.ratio.setValueAtTime(4, this.ctx.currentTime);
-        this.compressor.attack.setValueAtTime(0.002, this.ctx.currentTime);
-        this.compressor.release.setValueAtTime(0.18, this.ctx.currentTime);
-
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
-
-        this.dryGain = this.ctx.createGain();
-        this.wetGain = this.ctx.createGain();
-        this.dryGain.gain.setValueAtTime(1.0 - config.reverbMix * 0.3, this.ctx.currentTime);
-        this.wetGain.gain.setValueAtTime(config.reverbMix, this.ctx.currentTime);
-
-        // Create procedural Concert Hall Impulse Response for ConvolverNode
-        this.convolver = this.ctx.createConvolver();
-        this.convolver.buffer = this.createConcertHallImpulse(2.4, 2.8);
-
-        // Create short woody hammer strike noise buffer
-        this.hammerNoiseBuffer = this.createHammerNoiseBuffer(0.045);
-
-        // MediaStreamDestination for recording output
-        this.recorderDest = this.ctx.createMediaStreamDestination();
-
-        // Routing: compressor -> dry/wet -> masterGain -> destination & recorderDest
-        this.compressor.connect(this.dryGain);
-        this.compressor.connect(this.convolver);
-        this.convolver.connect(this.wetGain);
-
-        this.dryGain.connect(this.masterGain);
-        this.wetGain.connect(this.masterGain);
-
-        this.masterGain.connect(this.ctx.destination);
-        this.masterGain.connect(this.recorderDest);
-      }
-
-      createConcertHallImpulse(durationSec, decayRate) {
-        const rate = this.ctx.sampleRate;
-        const length = Math.floor(rate * durationSec);
-        const impulse = this.ctx.createBuffer(2, length, rate);
-        for (let ch = 0; ch < 2; ch++) {
-          const channelData = impulse.getChannelData(ch);
-          for (let i = 0; i < length; i++) {
-            const t = i / length;
-            // Early reflections + exponential lush tail
-            const envelope = Math.pow(1 - t, decayRate);
-            channelData[i] = (Math.random() * 2 - 1) * envelope * 0.5;
-          }
+        body {
+            font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+            background-color: #090706;
+            color: #f4ece1;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
         }
-        return impulse;
-      }
-
-      createHammerNoiseBuffer(durationSec) {
-        const rate = this.ctx.sampleRate;
-        const length = Math.floor(rate * durationSec);
-        const buffer = this.ctx.createBuffer(1, length, rate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < length; i++) {
-          const env = Math.exp(-i / (length * 0.22));
-          data[i] = (Math.random() * 2 - 1) * env;
+        .glass-panel {
+            background: rgba(20, 14, 10, 0.82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(212, 163, 89, 0.28);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
-        return buffer;
-      }
+        .gold-border {
+            border-color: rgba(217, 167, 74, 0.45);
+        }
+        .gold-gradient-btn {
+            background: linear-gradient(135deg, #b47b2b 0%, #855213 100%);
+            border: 1px solid #e7b96a;
+            box-shadow: 0 4px 14px rgba(180, 123, 43, 0.35);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .gold-gradient-btn:hover {
+            background: linear-gradient(135deg, #c98d38 0%, #9b6119 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(217, 167, 74, 0.5);
+        }
+        .gold-gradient-btn:active {
+            transform: translateY(1px);
+        }
+        /* Custom Range Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.12);
+            height: 6px;
+            border-radius: 999px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #e7b96a;
+            border: 2px solid #2b1908;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(231, 185, 106, 0.8);
+        }
+        .state-badge {
+            transition: all 0.12s ease;
+        }
+        .pulse-rec {
+            animation: pulseRed 1.2s infinite;
+        }
+        @keyframes pulseRed {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        }
+        /* Custom Scrollbar for Modals */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 10, 7, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(212, 163, 89, 0.4);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="relative select-none">
 
-      setReverbMix(mix) {
-        config.reverbMix = mix;
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        this.wetGain.gain.setTargetAtTime(mix, now, 0.02);
-        this.dryGain.gain.setTargetAtTime(1.0 - mix * 0.25, now, 0.02);
-      }
+    <!-- Hidden Video for MediaPipe Camera Stream -->
+    <video id="webcamVideo" class="hidden" playsinline muted></video>
 
-      noteOn(midiNote, velocity = 0.75) {
-        this.init();
-        if (this.ctx.state === 'suspended') {
-          this.ctx.resume();
+    <!-- Main Fullscreen AR & Santoor Canvas -->
+    <canvas id="arCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+    <header class="fixed top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-2xl glass-panel">
+        <!-- Brand & Title -->
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-800 flex items-center justify-center shadow-lg border border-amber-300/40">
+                <svg class="w-5 h-5 text-amber-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 19L7 5h10l4 14H3z" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <line x1="6.5" y1="8.5" x2="17.5" y2="8.5"/>
+                    <line x1="4" y1="15.5" x2="20" y2="15.5"/>
+                    <circle cx="9" cy="12" r="1" fill="currentColor"/>
+                    <circle cx="15" cy="8.5" r="1" fill="currentColor"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-sm md:text-base font-bold text-amber-200 tracking-tight flex items-center gap-2">
+                    <span>سنتور واقعیت افزوده ۹ خرک</span>
+                    <span id="camStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 text-amber-300 border border-amber-600/40">حالت لمسی / ماوس + وب‌کم</span>
+                </h1>
+                <p class="text-[11px] text-amber-100/60 hidden sm:block">شبیه‌ساز مضراب شلاقی مچ (Anti-Glissando) و سنتز ۴ سیمه جعبه چوب گردو</p>
+            </div>
+        </div>
+
+        <!-- Controls Row -->
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Dastgah Tuning Selector -->
+            <div class="flex items-center gap-1.5 bg-black/40 px-2.5 py-1.5 rounded-xl border border-amber-500/25">
+                <label for="dastgahSelect" class="text-xs text-amber-300/90 font-medium whitespace-nowrap">کوک دستگاه:</label>
+                <select id="dastgahSelect" class="bg-transparent text-xs md:text-sm font-semibold text-amber-100 focus:outline-none cursor-pointer">
+                    <option value="shur_g" class="bg-stone-900 text-amber-100">۱. شور سل (Shur in G - لا کُرُن / می کُرُن)</option>
+                    <option value="esfahan_g" class="bg-stone-900 text-amber-100">۲. بیات اصفهان سل (Bayat-e Esfahan in G)</option>
+                    <option value="mahoor_f" class="bg-stone-900 text-amber-100">۳. ماهور فا (Mahoor in F)</option>
+                    <option value="chahargah_c" class="bg-stone-900 text-amber-100">۴. چهارگاه دو (Chahargah in C - ر/لا/می/سی کُرُن)</option>
+                </select>
+            </div>
+
+            <!-- Mezrab Material Toggle (Felt vs Bare Wood) -->
+            <button id="mezrabTypeBtn" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/40 text-amber-200 flex items-center gap-1.5 transition" title="تغییر جنس سر مضراب (نمدی یا چوبی لخت) - همچنین با چرخش ساعد تغییر می‌کند">
+                <span id="mezrabTypeDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+                <span id="mezrabTypeText">مضراب: نمدی (مخملی)</span>
+            </button>
+
+            <!-- Auto Forearm Roll Toggle -->
+            <button id="autoRollBtn" class="px-2.5 py-1.5 rounded-xl text-[11px] font-medium bg-stone-900/80 hover:bg-stone-800 border border-amber-500/25 text-amber-300/90 transition hidden md:flex items-center gap-1" title="تشخیص خودکار مضراب نمدی/چوبی با زاویه چرخش ساعد (Roll)">
+                <input type="checkbox" id="autoRollCheck" checked class="accent-amber-500 rounded cursor-pointer">
+                <span>تشخیص چرخش ساعد</span>
+            </button>
+
+            <!-- Tombak / Metronome Accompaniment -->
+            <div class="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-xl border border-amber-500/25">
+                <button id="tombakToggleBtn" class="px-2 py-0.5 rounded-lg text-xs font-semibold bg-amber-900/40 hover:bg-amber-800/60 text-amber-200 transition flex items-center gap-1">
+                    <span id="tombakLight" class="w-2 h-2 rounded-full bg-stone-500"></span>
+                    <span>تمبک: خاموش</span>
+                </button>
+                <select id="rhythmSelect" class="bg-transparent text-xs text-amber-200 focus:outline-none cursor-pointer border-r border-amber-500/20 pr-1">
+                    <option value="6_8" class="bg-stone-900">۶/۸ شیرین</option>
+                    <option value="2_4" class="bg-stone-900">۲/۴ چهارمضراب</option>
+                    <option value="4_4" class="bg-stone-900">۴/۴ سنگین</option>
+                </select>
+                <input id="bpmInput" type="number" min="50" max="180" value="108" class="w-11 bg-stone-900/90 text-center text-xs text-amber-100 rounded border border-amber-500/30 py-0.5" title="سرعت تمبک (BPM)">
+            </div>
+
+            <!-- Record Performance Button -->
+            <button id="recordBtn" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-stone-900/90 hover:bg-stone-800 border border-red-500/40 text-red-300 flex items-center gap-1.5 transition">
+                <span id="recordDot" class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                <span id="recordBtnText">ضبط اجرا</span>
+            </button>
+
+            <!-- Demo / Test Arpeggio Button -->
+            <button id="demoPlayBtn" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-900/50 hover:bg-amber-800/70 border border-amber-400/30 text-amber-200 transition" title="اجرای چهارمضراب/آرپژ آزمایشی روی کوک فعلی">
+                🎵 تست چهارمضراب
+            </button>
+
+            <!-- Calibration & Settings Drawer Button -->
+            <button id="settingsToggleBtn" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-stone-900/90 hover:bg-stone-800 border border-amber-500/30 text-amber-200 flex items-center gap-1 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                </svg>
+                <span>کالیبراسیون و سمپل</span>
+            </button>
+
+            <!-- Camera Start/Stop Toggle -->
+            <button id="cameraToggleBtn" class="gold-gradient-btn px-3 py-1.5 rounded-xl text-xs font-bold text-amber-50 flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                </svg>
+                <span id="cameraToggleText">فعال‌سازی وب‌کم AR</span>
+            </button>
+        </div>
+    </header>
+
+    <aside id="telemetryHud" class="fixed bottom-3 left-3 z-20 w-80 sm:w-96 rounded-2xl glass-panel p-3 text-xs pointer-events-auto transition-all">
+        <div class="flex items-center justify-between border-b border-amber-500/20 pb-1.5 mb-2">
+            <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                <span class="font-bold text-amber-300">پنل تلمتری و ماشین حالت مضراب (HUD)</span>
+            </div>
+            <button id="minimizeHudBtn" class="text-[11px] text-amber-400/70 hover:text-amber-200 px-1.5 py-0.5 rounded bg-black/30">کوچک‌نمایی</button>
+        </div>
+
+        <div id="hudBodyContent" class="space-y-2">
+            <!-- Left & Right Hand State Machine Cards -->
+            <div class="grid grid-cols-2 gap-2">
+                <!-- Right Hand Card -->
+                <div class="bg-black/45 rounded-xl p-2 border border-amber-500/20">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[11px] font-bold text-amber-200">دست راست (مضراب راست)</span>
+                        <span id="rhStateBadge" class="state-badge text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-mono">ARMED</span>
+                    </div>
+                    <div class="space-y-1 text-[11px] text-stone-300">
+                        <div class="flex justify-between">
+                            <span>سرعت شلاقی ($\Vert\vec{v}_{rel}\Vert$):</span>
+                            <span id="rhVelRel" class="font-mono text-amber-300">0.00 px/ms</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>سرعت مچ ($\Vert\vec{v}_{wrist}\Vert$):</span>
+                            <span id="rhVelWrist" class="font-mono text-stone-400">0.00 px/ms</span>
+                        </div>
+                        <div class="w-full bg-stone-800 h-1.5 rounded-full overflow-hidden">
+                            <div id="rhVelBar" class="bg-gradient-to-r from-amber-500 to-red-500 h-full w-0 transition-all duration-75"></div>
+                        </div>
+                        <div class="flex justify-between pt-0.5">
+                            <span>هدف فعلی:</span>
+                            <span id="rhHoverTarget" class="text-amber-200 font-semibold">---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Left Hand Card -->
+                <div class="bg-black/45 rounded-xl p-2 border border-amber-500/20">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[11px] font-bold text-cyan-200">دست چپ (مضراب چپ)</span>
+                        <span id="lhStateBadge" class="state-badge text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-mono">ARMED</span>
+                    </div>
+                    <div class="space-y-1 text-[11px] text-stone-300">
+                        <div class="flex justify-between">
+                            <span>سرعت شلاقی ($\Vert\vec{v}_{rel}\Vert$):</span>
+                            <span id="lhVelRel" class="font-mono text-cyan-300">0.00 px/ms</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>سرعت مچ ($\Vert\vec{v}_{wrist}\Vert$):</span>
+                            <span id="lhVelWrist" class="font-mono text-stone-400">0.00 px/ms</span>
+                        </div>
+                        <div class="w-full bg-stone-800 h-1.5 rounded-full overflow-hidden">
+                            <div id="lhVelBar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-full w-0 transition-all duration-75"></div>
+                        </div>
+                        <div class="flex justify-between pt-0.5">
+                            <span>هدف فعلی:</span>
+                            <span id="lhHoverTarget" class="text-cyan-200 font-semibold">---</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Last Struck Note & Microtonal Frequency Readout -->
+            <div class="bg-gradient-to-r from-amber-950/60 via-stone-900/80 to-amber-950/60 rounded-xl p-2.5 border border-amber-500/30 flex items-center justify-between">
+                <div>
+                    <div class="text-[10px] text-amber-300/75">آخرین مضراب ثبت‌شده (Point-of-Impact Lock):</div>
+                    <div id="lastNoteTitle" class="text-sm font-bold text-amber-100 mt-0.5">آماده نواختن (خرک ۱ تا ۹)</div>
+                    <div id="lastTechniqueInfo" class="text-[11px] text-emerald-300/90">تکنیک: آماده | مضراب نمدی</div>
+                </div>
+                <div class="text-left font-mono">
+                    <div id="lastFreqReadout" class="text-base font-extrabold text-amber-400">000.00 Hz</div>
+                    <div id="lastCentsReadout" class="text-[10px] text-amber-200/80">4-String Unison (±1.1¢)</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <section id="settingsDrawer" class="fixed top-16 right-3 z-30 w-80 sm:w-96 max-h-[80vh] overflow-y-auto rounded-2xl glass-panel p-4 text-xs hidden">
+        <div class="flex items-center justify-between border-b border-amber-500/30 pb-2 mb-3">
+            <h2 class="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                <span>⚙️ کالیبراسیون سنتور، سینماتیک مچ و سمپل</span>
+            </h2>
+            <button id="closeSettingsBtn" class="text-stone-400 hover:text-white text-base font-bold px-1.5">✕</button>
+        </div>
+
+        <div class="space-y-3">
+            <!-- Geometry & Perspective Calibration -->
+            <div class="bg-black/40 p-2.5 rounded-xl border border-amber-500/20 space-y-2">
+                <div class="font-bold text-amber-200 text-xs">۱. هندسه و پرسپکتیو سنتور روی میز</div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span>مقیاس ابعاد سنتور (Scale):</span>
+                        <span id="scaleValLabel" class="font-mono text-amber-300">100%</span>
+                    </div>
+                    <input id="santoorScaleSlider" type="range" min="65" max="130" value="100" class="w-full">
+                </div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span>موقعیت عمودی روی میز (Y-Offset):</span>
+                        <span id="yOffsetValLabel" class="font-mono text-amber-300">54%</span>
+                    </div>
+                    <input id="santoorYSlider" type="range" min="35" max="75" value="54" class="w-full">
+                </div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span>زاویه پرسپکتیو ذوزنقه (3D Tilt):</span>
+                        <span id="tiltValLabel" class="font-mono text-amber-300">22°</span>
+                    </div>
+                    <input id="santoorTiltSlider" type="range" min="10" max="38" value="22" class="w-full">
+                </div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span>شفافیت بدنه چوب گردو (AR Opacity):</span>
+                        <span id="opacityValLabel" class="font-mono text-amber-300">90%</span>
+                    </div>
+                    <input id="santoorOpacitySlider" type="range" min="40" max="100" value="90" class="w-full">
+                </div>
+            </div>
+
+            <!-- Anti-Glissando & Wrist-Whip Kinematics Tuning -->
+            <div class="bg-black/40 p-2.5 rounded-xl border border-amber-500/20 space-y-2">
+                <div class="font-bold text-amber-200 text-xs">۲. تنظیمات ضدتداخل حرکت با ضربه (Anti-Glissando)</div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span>آستانه سرعت شلاقی مضراب ($V_{rel}$ Threshold):</span>
+                        <span id="strikeThreshLabel" class="font-mono text-amber-300">0.55 px/ms</span>
+                    </div>
+                    <input id="strikeThreshSlider" type="range" min="25" max="120" value="55" class="w-full">
+                </div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span>حساسیت قفل حرکت انتقالی مچ (Travel Lock):</span>
+                        <span id="travelLockLabel" class="font-mono text-amber-300">0.70 px/ms</span>
+                    </div>
+                    <input id="travelLockSlider" type="range" min="35" max="140" value="70" class="w-full">
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[11px] text-stone-300">نمایش کریدورهای مغناطیسی ۹ خرک:</span>
+                    <input id="showCorridorsCheck" type="checkbox" checked class="accent-amber-500 w-4 h-4 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Custom WAV / MP3 Sample Loader -->
+            <div class="bg-black/40 p-2.5 rounded-xl border border-amber-500/20 space-y-2">
+                <div class="font-bold text-amber-200 text-xs">۳. بارگذاری سمپل واقعی سنتور (WAV / MP3)</div>
+                <p class="text-[11px] text-stone-300 leading-relaxed">
+                    می‌توانید یک فایل صوتی تک‌مضراب سنتور (مثلاً نت سل یا دو) بارگذاری کنید تا با موتور سنتز ۴ سیمه ترکیب یا جایگزین شود و به صورت میکروتونال (ربع‌پرده) روی تمام ۳۶ نت کوک شود:
+                </p>
+                <input id="customSampleInput" type="file" accept="audio/*" class="block w-full text-[11px] text-amber-200 file:ml-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-700 file:text-white hover:file:bg-amber-600 cursor-pointer">
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[11px]">فرکانس پایه سمپل شما (Hz):</span>
+                    <input id="sampleBaseFreqInput" type="number" value="392.0" step="0.1" class="w-20 bg-stone-900 text-center text-xs text-amber-200 rounded border border-amber-500/30 py-0.5">
+                </div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-0.5">
+                        <span>میزان ترکیب سمپل با سنتز فیزیکی (Mix):</span>
+                        <span id="sampleMixLabel" class="font-mono text-amber-300">50%</span>
+                    </div>
+                    <input id="sampleMixSlider" type="range" min="0" max="100" value="50" class="w-full">
+                </div>
+                <div id="sampleStatusMsg" class="text-[11px] text-emerald-400 hidden">✓ سمپل اختصاصی با موفقیت بارگذاری شد.</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="fixed bottom-3 right-3 z-10 glass-panel px-3 py-2 rounded-2xl text-[11px] text-amber-100/85 max-w-xs sm:max-w-sm pointer-events-auto">
+        <div class="font-bold text-amber-300 mb-0.5">راهنمای سریع نواختن:</div>
+        <ul class="space-y-0.5 list-disc list-inside text-[10.5px] text-stone-300">
+            <li><strong class="text-amber-200">وب‌کم (AR):</strong> حرکت آرام دست بین خرک‌ها = <span class="text-amber-400">TRAVEL_LOCKED</span> (بی‌صدا). ضربه شلاقی مچ = ثبت تک‌مضراب در لحظه اوج فرود (Apex).</li>
+            <li><strong class="text-amber-200">تکنیک ریز (Riz):</strong> نگه داشتن هر دو مضراب روی یک خرک و لرزش سریع، یا نزدیک کردن شست و انگشت کوچک (یا نگه داشتن کلید <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">R</kbd> / کلیک راست).</li>
+            <li><strong class="text-amber-200">خفه کردن (Damping):</strong> باز کردن کامل ۵ انگشت کف دست روی سیم‌های زرد یا سفید (یا کلید <kbd class="px-1 bg-stone-800 rounded border border-amber-500/30">Space</kbd>).</li>
+        </ul>
+    </div>
+
+    <!-- Custom Non-Blocking Toast Notification -->
+    <div id="toastBox" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl glass-panel border border-amber-400/50 text-xs font-semibold text-amber-100 shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+    <script>
+        /**
+         * ============================================================================
+         * 1. PERSIAN MICROTONAL DASTGAH TUNING SYSTEM (36 COURSES / 144 STRINGS)
+         * ============================================================================
+         * In a standard 9-Kharak Iranian Santoor:
+         * - Right Row (Zard / Brass): Bridges 1 to 9 (Lower Octave, warm & resonant)
+         * - Left Row (Sefid / Steel): Bridges 1 to 9 (Middle Octave, bright & crystalline)
+         * - Posht-e-Kharak Sefid (Left of White Bridges): Bridges 1 to 9 (exactly 1 Octave above Sefid)
+         * - Posht-e-Kharak Zard / Auxiliary: Bridges 1 to 9 (Octave/Fifth reinforcement)
+         *
+         * Microtonal Formula: f = 440 * 2^((midi - 69 + centsOffset/100) / 12)
+         * Standard Persian Koron (کُرُن) ≈ -35 to -50 cents (A4 Koron ≈ 427.47 Hz -> -50 cents from A4=440Hz)
+         * Standard Persian Sori (سوری) ≈ +40 to +50 cents
+         */
+        function calcMicrotonalFreq(midiNote, centsOffset = 0) {
+            return 440 * Math.pow(2, (midiNote - 69 + (centsOffset / 100)) / 12);
         }
 
-        // Clamp velocity between 0.12 and 1.0
-        const vel = Math.max(0.12, Math.min(1.0, velocity));
-
-        // If note is already playing, smoothly re-trigger
-        if (this.activeVoices.has(midiNote)) {
-          this.forceStopVoice(midiNote, 0.025);
-        }
-
-        const now = this.ctx.currentTime;
-        const freq = midiToFreq(midiNote);
-
-        // Dynamic Low-Pass Filter controlled by strike Velocity (soft = warm, hard = bright)
-        const voiceFilter = this.ctx.createBiquadFilter();
-        voiceFilter.type = 'lowpass';
-        const minCutoff = Math.min(18000, freq * 2.2);
-        const maxCutoff = Math.min(19500, freq * (5 + vel * 12));
-        voiceFilter.frequency.setValueAtTime(maxCutoff, now);
-        // Filter mellows out naturally as string energy decays
-        voiceFilter.frequency.exponentialRampToValueAtTime(Math.max(220, minCutoff), now + 1.8);
-        voiceFilter.Q.setValueAtTime(1.1, now);
-
-        // Main voice envelope Gain
-        const voiceGain = this.ctx.createGain();
-        const peakGain = 0.32 * Math.pow(vel, 1.25);
-        voiceGain.gain.setValueAtTime(0.0001, now);
-        // Ultra-fast hammer attack (3ms)
-        voiceGain.gain.linearRampToValueAtTime(peakGain, now + 0.0035);
-        // Two-stage piano string decay (initial drop to sustain body, then long decay)
-        const decayTime = Math.max(1.2, 4.2 - (midiNote - 36) * 0.045);
-        voiceGain.gain.exponentialRampToValueAtTime(peakGain * 0.42, now + 0.22);
-        voiceGain.gain.exponentialRampToValueAtTime(0.0008, now + decayTime);
-
-        voiceFilter.connect(voiceGain);
-        voiceGain.connect(this.compressor);
-
-        // 1. Fundamental + Warm Body Oscillator (Triangle)
-        const osc1 = this.ctx.createOscillator();
-        osc1.type = 'triangle';
-        osc1.frequency.setValueAtTime(freq, now);
-
-        // 2. Detuned Unison String Oscillator (Sine with slight chorus detune)
-        const osc2 = this.ctx.createOscillator();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(freq, now);
-        osc2.detune.setValueAtTime(3.5, now); // 3.5 cents detune for realistic string pair
-
-        // 3. Second Harmonic Overtone (Octave up, adds acoustic brilliance)
-        const osc3 = this.ctx.createOscillator();
-        osc3.type = 'sine';
-        osc3.frequency.setValueAtTime(freq * 2, now);
-        const harm2Gain = this.ctx.createGain();
-        harm2Gain.gain.setValueAtTime(0.28 * vel, now);
-        harm2Gain.gain.exponentialRampToValueAtTime(0.001, now + decayTime * 0.55);
-
-        // 4. Third & Fourth Harmonics (String metallic ring on harder strikes)
-        const osc4 = this.ctx.createOscillator();
-        osc4.type = 'sine';
-        osc4.frequency.setValueAtTime(freq * 3, now);
-        const harm3Gain = this.ctx.createGain();
-        harm3Gain.gain.setValueAtTime(0.11 * (vel * vel), now);
-        harm3Gain.gain.exponentialRampToValueAtTime(0.0005, now + decayTime * 0.35);
-
-        // 5. Felt Hammer Transient (Short Bandpass Noise Burst)
-        const hammerSource = this.ctx.createBufferSource();
-        hammerSource.buffer = this.hammerNoiseBuffer;
-        const hammerFilter = this.ctx.createBiquadFilter();
-        hammerFilter.type = 'bandpass';
-        hammerFilter.frequency.setValueAtTime(Math.min(8000, freq * 4 + 900 * vel), now);
-        hammerFilter.Q.setValueAtTime(2.0, now);
-        const hammerGain = this.ctx.createGain();
-        hammerGain.gain.setValueAtTime(0.18 * vel, now);
-
-        osc1.connect(voiceFilter);
-        osc2.connect(voiceFilter);
-        osc3.connect(harm2Gain);
-        harm2Gain.connect(voiceFilter);
-        osc4.connect(harm3Gain);
-        harm3Gain.connect(voiceFilter);
-
-        hammerSource.connect(hammerFilter);
-        hammerFilter.connect(hammerGain);
-        hammerGain.connect(voiceFilter);
-
-        osc1.start(now);
-        osc2.start(now);
-        osc3.start(now);
-        osc4.start(now);
-        hammerSource.start(now);
-
-        const voiceObj = {
-          midiNote,
-          oscillators: [osc1, osc2, osc3, osc4, hammerSource],
-          voiceGain,
-          voiceFilter,
-          released: false,
-          cleanupTimer: setTimeout(() => {
-            this.forceStopVoice(midiNote, 0.02);
-          }, (decayTime + 0.1) * 1000)
+        // Exact 9-bridge definitions for the 4 standard Persian tunings
+        const DASTGAH_TUNINGS = {
+            shur_g: {
+                name: 'دستگاه شور سل (Shur in G)',
+                description: 'کوک استاندارد ردیف سنتور: سل، لا کُرُن (427.47Hz)، سی‌بمل، دو، ر، می‌بمل (یا می کُرُن)، فا، سل',
+                bridges: [
+                    // Kharak 1 to 9
+                    { kharak: 1, zard: { name: 'می‌بمل (Eb3)', latin: 'Eb3', midi: 51, cents: 0 },   sefid: { name: 'می کُرُن (E𝄳4)', latin: 'Ek4', midi: 64, cents: -50 } },
+                    { kharak: 2, zard: { name: 'فا (F3)',      latin: 'F3',  midi: 53, cents: 0 },   sefid: { name: 'فا (F4)',        latin: 'F4',  midi: 65, cents: 0 } },
+                    { kharak: 3, zard: { name: 'سل (G3)',      latin: 'G3',  midi: 55, cents: 0 },   sefid: { name: 'سل (G4)',        latin: 'G4',  midi: 67, cents: 0 } },
+                    { kharak: 4, zard: { name: 'لا کُرُن (A𝄳3)', latin: 'Ak3', midi: 57, cents: -50 }, sefid: { name: 'لا کُرُن (A𝄳4)',   latin: 'Ak4', midi: 69, cents: -50 } }, // 427.47 Hz
+                    { kharak: 5, zard: { name: 'سی‌بمل (Bb3)', latin: 'Bb3', midi: 58, cents: 0 },   sefid: { name: 'سی‌بمل (Bb4)',   latin: 'Bb4', midi: 70, cents: 0 } },
+                    { kharak: 6, zard: { name: 'دو (C4)',      latin: 'C4',  midi: 60, cents: 0 },   sefid: { name: 'دو (C5)',        latin: 'C5',  midi: 72, cents: 0 } },
+                    { kharak: 7, zard: { name: 'ر (D4)',       latin: 'D4',  midi: 62, cents: 0 },   sefid: { name: 'ر (D5)',         latin: 'D5',  midi: 74, cents: 0 } },
+                    { kharak: 8, zard: { name: 'می‌بمل (Eb4)', latin: 'Eb4', midi: 63, cents: 0 },   sefid: { name: 'می‌بمل (Eb5)',   latin: 'Eb5', midi: 75, cents: 0 } },
+                    { kharak: 9, zard: { name: 'فا (F4)',      latin: 'F4',  midi: 65, cents: 0 },   sefid: { name: 'فا (F5)',        latin: 'F5',  midi: 77, cents: 0 } }
+                ]
+            },
+            esfahan_g: {
+                name: 'آواز بیات اصفهان سل (Bayat-e Esfahan in G)',
+                description: 'کوک اصفهان سل: لا طبیعی، سی کُرُن، دو، ر، می‌بمل، فا دیز، سل',
+                bridges: [
+                    { kharak: 1, zard: { name: 'ر (D3)',       latin: 'D3',  midi: 50, cents: 0 },   sefid: { name: 'می‌بمل (Eb4)',   latin: 'Eb4', midi: 63, cents: 0 } },
+                    { kharak: 2, zard: { name: 'فا دیز (F#3)', latin: 'F#3', midi: 54, cents: 0 },   sefid: { name: 'فا دیز (F#4)',   latin: 'F#4', midi: 66, cents: 0 } },
+                    { kharak: 3, zard: { name: 'سل (G3)',      latin: 'G3',  midi: 55, cents: 0 },   sefid: { name: 'سل (G4)',        latin: 'G4',  midi: 67, cents: 0 } },
+                    { kharak: 4, zard: { name: 'لا (A3)',      latin: 'A3',  midi: 57, cents: 0 },   sefid: { name: 'لا (A4)',        latin: 'A4',  midi: 69, cents: 0 } },
+                    { kharak: 5, zard: { name: 'سی کُرُن (B𝄳3)', latin: 'Bk3', midi: 59, cents: -50 }, sefid: { name: 'سی کُرُن (B𝄳4)',   latin: 'Bk4', midi: 71, cents: -50 } },
+                    { kharak: 6, zard: { name: 'دو (C4)',      latin: 'C4',  midi: 60, cents: 0 },   sefid: { name: 'دو (C5)',        latin: 'C5',  midi: 72, cents: 0 } },
+                    { kharak: 7, zard: { name: 'ر (D4)',       latin: 'D4',  midi: 62, cents: 0 },   sefid: { name: 'ر (D5)',         latin: 'D5',  midi: 74, cents: 0 } },
+                    { kharak: 8, zard: { name: 'می‌بمل (Eb4)', latin: 'Eb4', midi: 63, cents: 0 },   sefid: { name: 'می‌بمل (Eb5)',   latin: 'Eb5', midi: 75, cents: 0 } },
+                    { kharak: 9, zard: { name: 'فا (F4)',      latin: 'F4',  midi: 65, cents: 0 },   sefid: { name: 'فا دیز (F#5)',   latin: 'F#5', midi: 78, cents: 0 } }
+                ]
+            },
+            mahoor_f: {
+                name: 'دستگاه ماهور فا (Mahoor in F)',
+                description: 'کوک ماهور فا: گام بزرگ فا با ر کُرُن در زرد برای گوشه دلکش و شکسته',
+                bridges: [
+                    { kharak: 1, zard: { name: 'دو (C3)',      latin: 'C3',  midi: 48, cents: 0 },   sefid: { name: 'می (E4)',        latin: 'E4',  midi: 64, cents: 0 } },
+                    { kharak: 2, zard: { name: 'فا (F3)',      latin: 'F3',  midi: 53, cents: 0 },   sefid: { name: 'فا (F4)',        latin: 'F4',  midi: 65, cents: 0 } },
+                    { kharak: 3, zard: { name: 'سل (G3)',      latin: 'G3',  midi: 55, cents: 0 },   sefid: { name: 'سل (G4)',        latin: 'G4',  midi: 67, cents: 0 } },
+                    { kharak: 4, zard: { name: 'لا (A3)',      latin: 'A3',  midi: 57, cents: 0 },   sefid: { name: 'لا (A4)',        latin: 'A4',  midi: 69, cents: 0 } },
+                    { kharak: 5, zard: { name: 'سی‌بمل (Bb3)', latin: 'Bb3', midi: 58, cents: 0 },   sefid: { name: 'سی‌بمل (Bb4)',   latin: 'Bb4', midi: 70, cents: 0 } },
+                    { kharak: 6, zard: { name: 'دو (C4)',      latin: 'C4',  midi: 60, cents: 0 },   sefid: { name: 'دو (C5)',        latin: 'C5',  midi: 72, cents: 0 } },
+                    { kharak: 7, zard: { name: 'ر کُرُن (D𝄳4)', latin: 'Dk4', midi: 62, cents: -50 }, sefid: { name: 'ر (D5)',         latin: 'D5',  midi: 74, cents: 0 } },
+                    { kharak: 8, zard: { name: 'می (E4)',      latin: 'E4',  midi: 64, cents: 0 },   sefid: { name: 'می (E5)',        latin: 'E5',  midi: 76, cents: 0 } },
+                    { kharak: 9, zard: { name: 'فا (F4)',      latin: 'F4',  midi: 65, cents: 0 },   sefid: { name: 'فا (F5)',        latin: 'F5',  midi: 77, cents: 0 } }
+                ]
+            },
+            chahargah_c: {
+                name: 'دستگاه چهارگاه دو (Chahargah in C)',
+                description: 'کوک باشکوه چهارگاه دو: دو، ر کُرُن، می، فا، سل، لا کُرُن، سی، دو',
+                bridges: [
+                    { kharak: 1, zard: { name: 'سل (G2)',      latin: 'G2',  midi: 43, cents: 0 },   sefid: { name: 'می (E4)',        latin: 'E4',  midi: 64, cents: 0 } },
+                    { kharak: 2, zard: { name: 'فا (F3)',      latin: 'F3',  midi: 53, cents: 0 },   sefid: { name: 'فا (F4)',        latin: 'F4',  midi: 65, cents: 0 } },
+                    { kharak: 3, zard: { name: 'سل (G3)',      latin: 'G3',  midi: 55, cents: 0 },   sefid: { name: 'سل (G4)',        latin: 'G4',  midi: 67, cents: 0 } },
+                    { kharak: 4, zard: { name: 'لا کُرُن (A𝄳3)', latin: 'Ak3', midi: 57, cents: -50 }, sefid: { name: 'لا کُرُن (A𝄳4)',   latin: 'Ak4', midi: 69, cents: -50 } },
+                    { kharak: 5, zard: { name: 'سی (B3)',      latin: 'B3',  midi: 59, cents: 0 },   sefid: { name: 'سی (B4)',        latin: 'B4',  midi: 71, cents: 0 } },
+                    { kharak: 6, zard: { name: 'دو (C4)',      latin: 'C4',  midi: 60, cents: 0 },   sefid: { name: 'دو (C5)',        latin: 'C5',  midi: 72, cents: 0 } },
+                    { kharak: 7, zard: { name: 'ر کُرُن (D𝄳4)', latin: 'Dk4', midi: 62, cents: -50 }, sefid: { name: 'ر کُرُن (D𝄳5)',   latin: 'Dk5', midi: 74, cents: -50 } },
+                    { kharak: 8, zard: { name: 'می (E4)',      latin: 'E4',  midi: 64, cents: 0 },   sefid: { name: 'می (E5)',        latin: 'E5',  midi: 76, cents: 0 } },
+                    { kharak: 9, zard: { name: 'فا (F4)',      latin: 'F4',  midi: 65, cents: 0 },   sefid: { name: 'فا (F5)',        latin: 'F5',  midi: 77, cents: 0 } }
+                ]
+            }
         };
 
-        this.activeVoices.set(midiNote, voiceObj);
-        this.sustainedNotes.delete(midiNote);
-        updatePolyphonyHUD();
-        return freq;
-      }
-
-      noteOff(midiNote) {
-        if (!this.activeVoices.has(midiNote)) return;
-        if (config.sustainActive) {
-          this.sustainedNotes.add(midiNote);
-          return;
-        }
-        this.releaseVoice(midiNote, 0.18);
-      }
-
-      releaseVoice(midiNote, releaseSec = 0.18) {
-        const voice = this.activeVoices.get(midiNote);
-        if (!voice || voice.released) return;
-        voice.released = true;
-        clearTimeout(voice.cleanupTimer);
-
-        const now = this.ctx.currentTime;
-        try {
-          voice.voiceGain.gain.cancelScheduledValues(now);
-          const currentVal = Math.max(0.0001, voice.voiceGain.gain.value);
-          voice.voiceGain.gain.setValueAtTime(currentVal, now);
-          voice.voiceGain.gain.exponentialRampToValueAtTime(0.0001, now + releaseSec);
-        } catch (e) {
-          // Ignore scheduling edge cases
+        // Helper for showing non-intrusive toast messages
+        function showToast(msg) {
+            const toast = document.getElementById('toastBox');
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            clearTimeout(window.__toastTimer);
+            window.__toastTimer = setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 3200);
         }
 
-        setTimeout(() => {
-          this.forceStopVoice(midiNote, 0);
-        }, releaseSec * 1000 + 25);
-      }
+        /**
+         * ============================================================================
+         * 2. QUAD-STRING WAVEGUIDE + WALNUT SOUNDBOARD SYNTHESIS ENGINE (WEB AUDIO API)
+         * ============================================================================
+         * Implements:
+         * - 4-String Unison Course per Kharak with micro-detuning (-1.3, -0.45, +0.45, +1.35 cents)
+         * - Metallic Inharmonicity & Timbre Differentiation (Zard Brass vs Sefid Steel vs Posht-e-Kharak)
+         * - Hammer Transient (5-15ms filtered noise burst shaped by Felt vs Bare Wooden Mezrab)
+         * - Strike Distance-to-Bridge spectral brightness shaping
+         * - 3-Band Walnut Soundboard Formant Filter Bank (220Hz, 480Hz, 1150Hz)
+         * - Sympathetic String Resonance & Spatial Reverb Impulse
+         * - Exponential String Damping (Khafeh Kardan) by Zone
+         */
+        class SantoorAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.compressor = null;
+                this.reverbNode = null;
+                this.sympatheticNode = null;
+                this.mediaStreamDest = null;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.isRecording = false;
 
-      forceStopVoice(midiNote, fadeSec = 0.015) {
-        const voice = this.activeVoices.get(midiNote);
-        if (!voice) return;
-        clearTimeout(voice.cleanupTimer);
-        this.activeVoices.delete(midiNote);
-        this.sustainedNotes.delete(midiNote);
+                // Custom sample state
+                this.customSampleBuffer = null;
+                this.customSampleBaseFreq = 392.0;
+                this.customSampleMix = 0.5;
 
-        const now = this.ctx ? this.ctx.currentTime : 0;
-        if (fadeSec > 0 && this.ctx) {
-          try {
-            voice.voiceGain.gain.cancelScheduledValues(now);
-            voice.voiceGain.gain.setValueAtTime(Math.max(0.0001, voice.voiceGain.gain.value), now);
-            voice.voiceGain.gain.linearRampToValueAtTime(0.0001, now + fadeSec);
-          } catch (e) {}
-        }
+                // Active voices for palm damping (Khafeh Kardan)
+                this.activeVoices = {
+                    zard: [],
+                    sefid: [],
+                    posht: []
+                };
 
-        setTimeout(() => {
-          voice.oscillators.forEach(osc => {
-            try { osc.stop(); osc.disconnect(); } catch (e) {}
-          });
-          try { voice.voiceGain.disconnect(); } catch (e) {}
-          updatePolyphonyHUD();
-        }, fadeSec * 1000 + 10);
-      }
-
-      releaseSustainedNotes() {
-        for (const midiNote of this.sustainedNotes) {
-          this.releaseVoice(midiNote, 0.24);
-        }
-        this.sustainedNotes.clear();
-      }
-
-      toggleRecording() {
-        this.init();
-        if (!this.isRecording) {
-          this.recordedChunks = [];
-          let options = { mimeType: 'audio/webm' };
-          if (!MediaRecorder.isTypeSupported('audio/webm')) {
-            options = MediaRecorder.isTypeSupported('audio/mp4') ? { mimeType: 'audio/mp4' } : {};
-          }
-          try {
-            this.mediaRecorder = new MediaRecorder(this.recorderDest.stream, options);
-          } catch (err) {
-            this.mediaRecorder = new MediaRecorder(this.recorderDest.stream);
-          }
-
-          this.mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              this.recordedChunks.push(e.data);
+                // Pre-computed PeriodicWaves for Zard (Brass), Sefid (Steel), Posht-e-Kharak
+                this.waves = {};
+                this.noiseBuffer = null;
             }
-          };
 
-          this.mediaRecorder.onstop = () => {
-            const blob = new Blob(this.recordedChunks, { type: this.mediaRecorder.mimeType || 'audio/webm' });
-            const url = URL.createObjectURL(blob);
-            const downloadBox = document.getElementById('download-box');
-            const downloadLink = document.getElementById('download-link');
-            downloadLink.href = url;
-            const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '-');
-            downloadLink.download = `ar-piano-${timestamp}.webm`;
-            downloadBox.classList.remove('hidden');
-            // Open settings panel automatically so user sees download button
-            document.getElementById('settings-panel').classList.remove('-translate-x-[120%]', 'opacity-0');
-            showToast('ضبط به پایان رسید! لینک دانلود در پنل تنظیمات آماده است.');
-          };
+            init() {
+                if (this.ctx) {
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    return;
+                }
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx({ latencyHint: 'interactive' });
 
-          this.mediaRecorder.start();
-          this.isRecording = true;
-          showToast('ضبط اجرای پیانو آغاز شد...');
-          return true;
-        } else {
-          if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-            this.mediaRecorder.stop();
-          }
-          this.isRecording = false;
-          return false;
+                // Master Dynamics Compressor for clear polyphony during rapid Riz
+                this.compressor = this.ctx.createDynamicsCompressor();
+                this.compressor.threshold.value = -16;
+                this.compressor.knee.value = 18;
+                this.compressor.ratio.value = 4.5;
+                this.compressor.attack.value = 0.002;
+                this.compressor.release.value = 0.18;
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0.88;
+
+                // Create Walnut Body Formant Filter Bank (220Hz, 480Hz, 1150Hz)
+                this.bodyInput = this.ctx.createGain();
+                const formantFreqs = [
+                    { f: 220, q: 3.2, gain: 4.5 },  // Main Helmholtz walnut cavity resonance
+                    { f: 480, q: 4.0, gain: 3.8 },  // Bridge-to-soundboard coupling mode
+                    { f: 1150, q: 4.5, gain: 3.2 }  // Upper rosette (Gol) woody brightness
+                ];
+
+                this.formantSum = this.ctx.createGain();
+                this.formantSum.gain.value = 0.85;
+
+                // Direct path + parallel formant resonators
+                this.bodyInput.connect(this.formantSum);
+                formantFreqs.forEach(fm => {
+                    const bp = this.ctx.createBiquadFilter();
+                    bp.type = 'peaking';
+                    bp.frequency.value = fm.f;
+                    bp.Q.value = fm.q;
+                    bp.gain.value = fm.gain;
+                    this.bodyInput.connect(bp);
+                    bp.connect(this.formantSum);
+                });
+
+                // Sympathetic Resonance Network & Walnut Hall Convolution Reverb
+                this.reverbNode = this.ctx.createConvolver();
+                this.reverbNode.buffer = this.buildSympatheticWalnutImpulse(2.6, 3.2);
+                this.reverbWet = this.ctx.createGain();
+                this.reverbWet.gain.value = 0.28;
+
+                this.formantSum.connect(this.compressor);
+                this.formantSum.connect(this.reverbNode);
+                this.reverbNode.connect(this.reverbWet);
+                this.reverbWet.connect(this.compressor);
+
+                // MediaStreamDestination for Recording User Performance
+                this.mediaStreamDest = this.ctx.createMediaStreamDestination();
+                this.compressor.connect(this.masterGain);
+                this.masterGain.connect(this.ctx.destination);
+                this.masterGain.connect(this.mediaStreamDest);
+
+                this.buildCustomPeriodicWaves();
+                this.buildHammerNoiseBuffer();
+            }
+
+            buildCustomPeriodicWaves() {
+                // 1. Zard (Brass strings): Strong fundamental f0 & 2f0, warm upper harmonics
+                const zardReal = new Float32Array(16);
+                const zardImag = new Float32Array(16);
+                const zardAmps = [0, 1.0, 0.72, 0.34, 0.20, 0.12, 0.07, 0.04, 0.02, 0.01];
+                for (let i = 1; i < zardAmps.length; i++) zardImag[i] = zardAmps[i];
+                this.waves.zard = this.ctx.createPeriodicWave(zardReal, zardImag);
+
+                // 2. Sefid (Steel strings): Crystalline, strong 3f0, 4f0, 5f0, 6f0
+                const sefidReal = new Float32Array(20);
+                const sefidImag = new Float32Array(20);
+                const sefidAmps = [0, 1.0, 0.65, 0.58, 0.46, 0.35, 0.22, 0.15, 0.11, 0.08, 0.05, 0.03];
+                for (let i = 1; i < sefidAmps.length; i++) sefidImag[i] = sefidAmps[i];
+                this.waves.sefid = this.ctx.createPeriodicWave(sefidReal, sefidImag);
+
+                // 3. Posht-e-Kharak (High tension octave strings): Extra bright metallic overtones
+                const poshtReal = new Float32Array(20);
+                const poshtImag = new Float32Array(20);
+                const poshtAmps = [0, 1.0, 0.75, 0.68, 0.55, 0.42, 0.32, 0.22, 0.14, 0.09, 0.06];
+                for (let i = 1; i < poshtAmps.length; i++) poshtImag[i] = poshtAmps[i];
+                this.waves.posht = this.ctx.createPeriodicWave(poshtReal, poshtImag);
+            }
+
+            buildHammerNoiseBuffer() {
+                const len = Math.floor(this.ctx.sampleRate * 0.04); // 40ms buffer
+                this.noiseBuffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                const data = this.noiseBuffer.getChannelData(0);
+                for (let i = 0; i < len; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.008));
+                }
+            }
+
+            buildSympatheticWalnutImpulse(duration, decay) {
+                const rate = this.ctx.sampleRate;
+                const length = Math.floor(rate * duration);
+                const impulse = this.ctx.createBuffer(2, length, rate);
+                // Sympathetic shimmer frequencies (G3, C4, D4, G4, C5)
+                const sympFreqs = [196.0, 261.63, 293.66, 392.0, 523.25, 587.33];
+
+                for (let ch = 0; ch < 2; ch++) {
+                    const channelData = impulse.getChannelData(ch);
+                    for (let i = 0; i < length; i++) {
+                        const t = i / rate;
+                        const env = Math.pow(1 - i / length, decay);
+                        let symp = 0;
+                        for (let k = 0; k < sympFreqs.length; k++) {
+                            symp += Math.sin(2 * Math.PI * sympFreqs[k] * t + ch * 0.7) * 0.015;
+                        }
+                        channelData[i] = ((Math.random() * 2 - 1) * 0.35 + symp) * env;
+                    }
+                }
+                return impulse;
+            }
+
+            /**
+             * Synthesizes a 4-String Unison Santoor Course strike
+             * @param {Object} params - { freq, zone ('zard'|'sefid'|'posht'), velocity (0.1..1.0), isWoodMezrab, bridgeProx (0..1) }
+             */
+            strikeCourse({ freq, zone = 'sefid', velocity = 0.8, isWoodMezrab = false, bridgeProx = 0.25 }) {
+                this.init();
+                const now = this.ctx.currentTime;
+                const clampedVel = Math.max(0.12, Math.min(1.0, velocity));
+
+                // Determine acoustic sustain time based on zone
+                let sustainTime = 3.2;
+                if (zone === 'zard') sustainTime = 4.6;       // Brass strings sustain 3.5 - 5.0s
+                else if (zone === 'sefid') sustainTime = 3.3; // Steel strings
+                else if (zone === 'posht') sustainTime = 2.3; // High octave strings
+
+                // Create a voice group gain for palm damping (Khafeh Kardan)
+                const courseGain = this.ctx.createGain();
+                const peakGain = clampedVel * 0.24 * (this.customSampleBuffer ? (1 - this.customSampleMix * 0.65) : 1.0);
+                courseGain.gain.setValueAtTime(0.0001, now);
+                courseGain.gain.linearRampToValueAtTime(peakGain, now + (isWoodMezrab ? 0.0018 : 0.0038));
+                courseGain.gain.exponentialRampToValueAtTime(peakGain * 0.32, now + 0.35);
+                courseGain.gain.exponentialRampToValueAtTime(0.0001, now + sustainTime);
+
+                // Spectral filter shaped by Mezrab material (Felt vs Bare Wood) & proximity to bridge
+                const stringFilter = this.ctx.createBiquadFilter();
+                stringFilter.type = 'lowpass';
+                const baseCutoff = freq * (isWoodMezrab ? 14.5 : 7.5) * (0.75 + bridgeProx * 0.85);
+                const maxCutoff = Math.min(16500, baseCutoff * (0.65 + clampedVel * 0.6));
+                stringFilter.frequency.setValueAtTime(maxCutoff, now);
+                stringFilter.frequency.exponentialRampToValueAtTime(Math.max(freq * 2.2, 900), now + sustainTime * 0.78);
+                stringFilter.Q.value = isWoodMezrab ? 2.4 : 1.1;
+
+                courseGain.connect(stringFilter);
+                stringFilter.connect(this.bodyInput);
+
+                // 4 Unison Strings with Micro-Detuning (Cents) + Slight Metallic Inharmonicity
+                const detuneCents = [-1.35, -0.45, +0.48, +1.40];
+                const inharmonicStretch = [1.0, 1.00018, 0.99985, 1.00032];
+                const oscList = [];
+
+                for (let i = 0; i < 4; i++) {
+                    const osc = this.ctx.createOscillator();
+                    osc.setPeriodicWave(this.waves[zone] || this.waves.sefid);
+                    osc.frequency.setValueAtTime(freq * inharmonicStretch[i], now);
+                    osc.detune.setValueAtTime(detuneCents[i] + (Math.random() - 0.5) * 0.3, now);
+
+                    // Subtle metallic pitch envelope on hard strikes
+                    if (clampedVel > 0.65) {
+                        osc.detune.setValueAtTime(detuneCents[i] + clampedVel * 4.5, now);
+                        osc.detune.exponentialRampToValueAtTime(detuneCents[i], now + 0.045);
+                    }
+
+                    osc.connect(courseGain);
+                    osc.start(now);
+                    osc.stop(now + sustainTime + 0.05);
+                    oscList.push(osc);
+                }
+
+                // High Metallic Shimmer Overtone (Inharmonic partial characteristic of Santoor strings)
+                const shimmerOsc = this.ctx.createOscillator();
+                const shimmerGain = this.ctx.createGain();
+                shimmerOsc.type = 'sine';
+                // Inharmonic partial ~ 3.014 * f0 or 4.022 * f0
+                const partialMult = zone === 'zard' ? 2.996 : 4.018;
+                shimmerOsc.frequency.setValueAtTime(freq * partialMult, now);
+                const shimLevel = clampedVel * (isWoodMezrab ? 0.075 : 0.032) * (0.6 + bridgeProx * 0.7);
+                shimmerGain.gain.setValueAtTime(shimLevel, now);
+                shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + Math.min(0.9, sustainTime * 0.35));
+                shimmerOsc.connect(shimmerGain);
+                shimmerGain.connect(this.bodyInput);
+                shimmerOsc.start(now);
+                shimmerOsc.stop(now + 0.95);
+
+                // Hammer Strike Transient (5-15ms Woody/Felt Impact Impulse)
+                if (this.noiseBuffer) {
+                    const hammerSrc = this.ctx.createBufferSource();
+                    hammerSrc.buffer = this.noiseBuffer;
+
+                    const hammerBand = this.ctx.createBiquadFilter();
+                    hammerBand.type = 'bandpass';
+                    // Bare wooden mezrab produces sharp 2.8kHz click; felt mezrab produces warm 950Hz thump
+                    hammerBand.frequency.value = isWoodMezrab ? (2600 + bridgeProx * 1200) : (920 + bridgeProx * 500);
+                    hammerBand.Q.value = isWoodMezrab ? 2.2 : 1.3;
+
+                    const hammerGain = this.ctx.createGain();
+                    const transientDuration = isWoodMezrab ? 0.008 : 0.014;
+                    hammerGain.gain.setValueAtTime(clampedVel * (isWoodMezrab ? 0.35 : 0.18), now);
+                    hammerGain.gain.exponentialRampToValueAtTime(0.0001, now + transientDuration);
+
+                    hammerSrc.connect(hammerBand);
+                    hammerBand.connect(hammerGain);
+                    hammerGain.connect(this.bodyInput);
+                    hammerSrc.start(now);
+                }
+
+                // Layer Custom WAV/MP3 Sample if loaded by user
+                if (this.customSampleBuffer && this.customSampleMix > 0.01) {
+                    const smpSrc = this.ctx.createBufferSource();
+                    smpSrc.buffer = this.customSampleBuffer;
+                    smpSrc.playbackRate.value = freq / Math.max(20, this.customSampleBaseFreq);
+
+                    const smpGain = this.ctx.createGain();
+                    const smpPeak = clampedVel * this.customSampleMix * 0.65;
+                    smpGain.gain.setValueAtTime(smpPeak, now);
+                    smpGain.gain.exponentialRampToValueAtTime(0.0001, now + sustainTime);
+
+                    smpSrc.connect(smpGain);
+                    smpGain.connect(this.bodyInput);
+                    smpSrc.start(now);
+                    oscList.push(smpSrc);
+                }
+
+                // Track voice for Palm Damping (Khafeh Kardan)
+                const voiceRecord = { gainNode: courseGain, expires: now + sustainTime };
+                const zoneList = this.activeVoices[zone] || this.activeVoices.sefid;
+                zoneList.push(voiceRecord);
+                if (zoneList.length > 48) zoneList.shift();
+            }
+
+            /**
+             * Exponential Fade-out (Khafeh Kardan) when palm is opened flat over Zard or Sefid strings
+             */
+            dampStrings(zone = 'all') {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const zonesToDamp = zone === 'all' ? ['zard', 'sefid', 'posht'] : [zone];
+
+                zonesToDamp.forEach(z => {
+                    const list = this.activeVoices[z] || [];
+                    list.forEach(v => {
+                        if (v.expires > now) {
+                            try {
+                                v.gainNode.gain.cancelScheduledValues(now);
+                                v.gainNode.gain.setValueAtTime(Math.max(0.0001, v.gainNode.gain.value), now);
+                                v.gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.085);
+                                v.expires = now + 0.09;
+                            } catch (e) {}
+                        }
+                    });
+                });
+            }
+
+            /**
+             * Synthesizes Persian Tombak percussion strokes (Tom, Bak, Pelang) for rhythmic accompaniment
+             */
+            playTombakStroke(type = 'tom') {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                if (type === 'tom') {
+                    // Deep center membrane stroke (Tom)
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(138, now);
+                    osc.frequency.exponentialRampToValueAtTime(64, now + 0.14);
+                    gain.gain.setValueAtTime(0.32, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+                } else if (type === 'bak') {
+                    // Sharp rim stroke (Bak)
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(420, now);
+                    osc.frequency.exponentialRampToValueAtTime(210, now + 0.06);
+                    gain.gain.setValueAtTime(0.22, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+                } else {
+                    // Soft finger snap (Pelang/Eshareh)
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(680, now);
+                    osc.frequency.exponentialRampToValueAtTime(310, now + 0.035);
+                    gain.gain.setValueAtTime(0.11, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                }
+
+                osc.connect(gain);
+                gain.connect(this.compressor);
+                osc.start(now);
+                osc.stop(now + 0.22);
+            }
+
+            toggleRecording() {
+                this.init();
+                if (!this.isRecording) {
+                    this.recordedChunks = [];
+                    let mimeType = 'audio/webm';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = '';
+                    }
+                    this.mediaRecorder = mimeType
+                        ? new MediaRecorder(this.mediaStreamDest.stream, { mimeType })
+                        : new MediaRecorder(this.mediaStreamDest.stream);
+
+                    this.mediaRecorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) this.recordedChunks.push(e.data);
+                    };
+                    this.mediaRecorder.onstop = () => {
+                        const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `santoor-performance-${Date.now()}.webm`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    };
+                    this.mediaRecorder.start();
+                    this.isRecording = true;
+                    return true;
+                } else {
+                    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                        this.mediaRecorder.stop();
+                    }
+                    this.isRecording = false;
+                    return false;
+                }
+            }
         }
-      }
-    }
 
-    const audioEngine = new PolyphonicPianoEngine();
+        const audioEngine = new SantoorAudioEngine();
 
-    let pianoKeys = [];     // All keys
-    let whiteKeys = [];     // White keys for base layer rendering
-    let blackKeys = [];     // Black keys for top priority hit-testing & rendering
-    let visualRipples = []; // Strike visual bursts
+        /**
+         * ============================================================================
+         * 3. ADAPTIVE EMA SMOOTHING & 4-STAGE ANTI-GLISSANDO KINEMATICS ENGINE
+         * ============================================================================
+         * Solves accidental string triggering during hand traversal:
+         * - Adaptive EMA: Low alpha at slow speed (removes webcam jitter), high alpha (~0.92) during rapid wrist whip.
+         * - Virtual Mezrab Projection: Projects Mezrab Tip 25% beyond Index/Middle tips along Landmark 5 -> (8,12,4) axis.
+         * - 4-Stage State Machine per Hand:
+         *   1. TRAVEL_LOCKED: ||v_wrist|| is high relative to wrist rotation ||v_rel|| -> Zero accidental strikes!
+         *   2. ARMED / WHIPPING: Wrist acts as hinge (low ||v_wrist||), Mezrab tip accelerates downward/forward (||v_rel|| > threshold).
+         *   3. STRIKE APEX GATING & POINT-OF-IMPACT LOCKING: Triggers ONLY at the exact millisecond of peak deceleration / rebound apex.
+         *   4. REBOUND COOLDOWN: Locks re-triggering until tip rebounds upward by hysteresis distance and >= 35ms has elapsed.
+         */
+        class AdaptivePoint3D {
+            constructor() {
+                this.x = 0;
+                this.y = 0;
+                this.z = 0;
+                this.initialized = false;
+            }
+            update(rawX, rawY, rawZ, dtMs) {
+                if (!this.initialized) {
+                    this.x = rawX;
+                    this.y = rawY;
+                    this.z = rawZ;
+                    this.initialized = true;
+                    return;
+                }
+                const dist = Math.hypot(rawX - this.x, rawY - this.y);
+                const speed = dist / Math.max(1, dtMs);
+                // Adaptive alpha: 0.25 at rest to kill jitter, scales up to 0.94 during fast Mezrab whip
+                const alpha = Math.min(0.94, Math.max(0.25, speed * 0.45));
+                this.x = this.x + alpha * (rawX - this.x);
+                this.y = this.y + alpha * (rawY - this.y);
+                this.z = this.z + alpha * (rawZ - this.z);
+            }
+        }
 
-    function buildPianoKeyboard() {
-      const startMidi = (config.baseOctave + 1) * 12; // e.g., C3 = 48
-      const totalKeys = config.octaves * 12;
-      const oldPressed = new Map();
+        class HandMezrabController {
+            constructor(side) {
+                this.side = side; // 'right' or 'left'
+                this.active = false;
+                this.lastSeenTime = 0;
 
-      // Release any currently active voices before rebuilding
-      pianoKeys.forEach(k => {
-        if (k.pressed) audioEngine.noteOff(k.midi);
-      });
+                // 21 Smoothed Landmarks
+                this.landmarks = Array.from({ length: 21 }, () => new AdaptivePoint3D());
 
-      pianoKeys = [];
-      whiteKeys = [];
-      blackKeys = [];
+                // Virtual Mezrab Geometry (in Canvas pixel coordinates)
+                this.wristPos = { x: 0, y: 0, z: 0 };
+                this.prevWristPos = { x: 0, y: 0, z: 0 };
+                this.ringPos = { x: 0, y: 0 };       // Finger loop base of Mezrab
+                this.tipPos = { x: 0, y: 0, z: 0 };  // Felt/Wood tip of Mezrab (25% projected beyond fingers)
+                this.prevTipPos = { x: 0, y: 0, z: 0 };
 
-      for (let i = 0; i < totalKeys; i++) {
-        const midi = startMidi + i;
-        const info = getMidiNoteLabel(midi);
-        const keyObj = {
-          midi,
-          labelEn: info.en,
-          labelFa: info.fa,
-          freq: midiToFreq(midi),
-          isBlack: info.isBlack,
-          x: 0,
-          y: 0,
-          w: 0,
-          h: 0,
-          pressed: false,
-          hovered: false,
-          pressDepth: 0,      // 0.0 to 1.0 animated depression
-          velocity: 0,        // Last strike velocity
-          lastTriggerTime: 0, // For 30ms cooldown
-          activeFingerIds: new Set() // Which fingertip IDs are holding this key
+                // Kinematics Vectors (px/ms)
+                this.vWrist = { x: 0, y: 0, mag: 0 };
+                this.vTip = { x: 0, y: 0, mag: 0 };
+                this.vRel = { x: 0, y: 0, z: 0, mag: 0, downwardSpeed: 0 };
+                this.prevDownwardSpeed = 0;
+                this.peakWhipSpeed = 0;
+
+                // 4-Stage State Machine
+                // States: 'ARMED' | 'TRAVEL_LOCKED' | 'WHIPPING' | 'REBOUND' | 'RIZ_MODE' | 'MUTE_PALM'
+                this.state = 'ARMED';
+                this.lastStrikeTime = 0;
+                this.strikeApexY = 0;
+                this.lockedBridge = null; // Locked bridge during RIZ_MODE
+                this.hoveredTarget = null;
+                this.lastRizPulseTime = 0;
+                this.oscillationCounter = 0;
+                this.lastOscSign = 0;
+                this.lastOscFlipTime = 0;
+
+                // Articulation properties
+                this.isOpenPalmMute = false;
+                this.isPinchRiz = false;
+                this.forearmRollAngle = 0;
+                this.lastDampTime = 0;
+            }
+
+            updateFromMediaPipe(rawLandmarks, canvasW, canvasH, nowMs, config) {
+                const dt = Math.min(60, Math.max(4, nowMs - (this.lastSeenTime || (nowMs - 16))));
+                this.lastSeenTime = nowMs;
+                this.active = true;
+
+                // 1. Update all 21 landmarks with Adaptive EMA
+                for (let i = 0; i < 21; i++) {
+                    // Mirror X coordinate so it matches the mirrored AR webcam view
+                    const mx = (1.0 - rawLandmarks[i].x) * canvasW;
+                    const my = rawLandmarks[i].y * canvasH;
+                    const mz = rawLandmarks[i].z * canvasW;
+                    this.landmarks[i].update(mx, my, mz, dt);
+                }
+
+                // Save previous positions
+                this.prevWristPos = { ...this.wristPos };
+                this.prevTipPos = { ...this.tipPos };
+
+                const lm0 = this.landmarks[0];   // Wrist
+                const lm4 = this.landmarks[4];   // Thumb tip
+                const lm5 = this.landmarks[5];   // Index MCP (Base)
+                const lm8 = this.landmarks[8];   // Index Tip
+                const lm12 = this.landmarks[12]; // Middle Tip
+                const lm17 = this.landmarks[17]; // Pinky MCP
+                const lm20 = this.landmarks[20]; // Pinky Tip
+
+                this.wristPos = { x: lm0.x, y: lm0.y, z: lm0.z };
+
+                // 2. Virtual Mezrab Geometry Projection
+                // Mezrab grip ring sits near index base (5) & thumb (4)
+                this.ringPos = {
+                    x: lm5.x * 0.65 + lm4.x * 0.35,
+                    y: lm5.y * 0.65 + lm4.y * 0.35
+                };
+
+                // Finger tip cluster (average of Index 8, Middle 12, and Thumb 4)
+                const clusterX = lm8.x * 0.48 + lm12.x * 0.37 + lm4.x * 0.15;
+                const clusterY = lm8.y * 0.48 + lm12.y * 0.37 + lm4.y * 0.15;
+                const clusterZ = lm8.z * 0.5 + lm12.z * 0.5;
+
+                // Project Mezrab Tip 25% beyond finger cluster along vector from Landmark 5
+                const vecX = clusterX - lm5.x;
+                const vecY = clusterY - lm5.y;
+                const vecZ = clusterZ - lm5.z;
+
+                this.tipPos = {
+                    x: clusterX + vecX * 0.42, // ~25% total hand length beyond index tip
+                    y: clusterY + vecY * 0.42,
+                    z: clusterZ + vecZ * 0.42
+                };
+
+                // 3. Wrist-Relative Velocity Calculation: v_rel = v_tip - v_wrist
+                this.vWrist.x = (this.wristPos.x - this.prevWristPos.x) / dt;
+                this.vWrist.y = (this.wristPos.y - this.prevWristPos.y) / dt;
+                this.vWrist.mag = Math.hypot(this.vWrist.x, this.vWrist.y);
+
+                this.vTip.x = (this.tipPos.x - this.prevTipPos.x) / dt;
+                this.vTip.y = (this.tipPos.y - this.prevTipPos.y) / dt;
+                this.vTip.mag = Math.hypot(this.vTip.x, this.vTip.y);
+
+                this.vRel.x = this.vTip.x - this.vWrist.x;
+                this.vRel.y = this.vTip.y - this.vWrist.y;
+                this.vRel.z = ((this.tipPos.z - this.prevTipPos.z) - (this.wristPos.z - this.prevWristPos.z)) / dt;
+                this.vRel.mag = Math.hypot(this.vRel.x, this.vRel.y);
+
+                // Downward/Forward whip speed component (positive when whipping downward or inward)
+                const whipSpeed = this.vRel.y + Math.max(0, -this.vRel.z * 0.35);
+
+                // 4. Analyze Palm Normal & Forearm Roll (Cross product of Wrist->5 and Wrist->17)
+                const vA = { x: lm5.x - lm0.x, y: lm5.y - lm0.y, z: lm5.z - lm0.z };
+                const vB = { x: lm17.x - lm0.x, y: lm17.y - lm0.y, z: lm17.z - lm0.z };
+                const palmSpan = Math.hypot(lm5.x - lm17.x, lm5.y - lm17.y) || 1;
+                this.forearmRollAngle = Math.atan2(lm17.y - lm5.y, lm17.x - lm5.x) * (180 / Math.PI);
+
+                // 5. Detect Open-Palm String Damping (Khafeh Kardan)
+                // Check if all 5 fingertips (4, 8, 12, 16, 20) are extended far from wrist & moving slowly
+                const fingerTips = [4, 8, 12, 16, 20];
+                let avgTipDist = 0;
+                fingerTips.forEach(idx => {
+                    avgTipDist += Math.hypot(this.landmarks[idx].x - lm0.x, this.landmarks[idx].y - lm0.y);
+                });
+                avgTipDist /= 5;
+                const spread4_20 = Math.hypot(lm4.x - lm20.x, lm4.y - lm20.y);
+
+                this.isOpenPalmMute = (
+                    avgTipDist > palmSpan * 2.05 &&
+                    spread4_20 > palmSpan * 1.45 &&
+                    this.vRel.mag < config.strikeThreshold * 0.65 &&
+                    this.vWrist.mag < config.travelLockThreshold * 0.75
+                );
+
+                // 6. Detect High-Frequency Wrist Oscillation or Thumb-Pinky Pinch for RIZ_MODE
+                const curSign = Math.sign(this.vRel.y);
+                if (curSign !== 0 && curSign !== this.lastOscSign && Math.abs(this.vRel.y) > 0.22) {
+                    if (nowMs - this.lastOscFlipTime < 130) {
+                        this.oscillationCounter = Math.min(10, this.oscillationCounter + 1);
+                    } else {
+                        this.oscillationCounter = Math.max(0, this.oscillationCounter - 1);
+                    }
+                    this.lastOscFlipTime = nowMs;
+                    this.lastOscSign = curSign;
+                } else if (nowMs - this.lastOscFlipTime > 180) {
+                    this.oscillationCounter = 0;
+                }
+
+                const pinch4_20 = Math.hypot(lm4.x - lm20.x, lm4.y - lm20.y);
+                this.isPinchRiz = (pinch4_20 < palmSpan * 0.68) || (this.oscillationCounter >= 4);
+
+                // Update current hovered bridge corridor
+                this.hoveredTarget = findSantoorTargetAt(this.tipPos.x, this.tipPos.y);
+
+                // Execute the 4-Stage Strike State Machine
+                this.evaluateStateMachine(whipSpeed, nowMs, config);
+                this.prevDownwardSpeed = whipSpeed;
+            }
+
+            evaluateStateMachine(whipSpeed, nowMs, config) {
+                // Priority A: Open Palm String Damping (خفه کردن سیم‌ها)
+                if (this.isOpenPalmMute && this.hoveredTarget) {
+                    this.state = 'MUTE_PALM';
+                    if (nowMs - this.lastDampTime > 90) {
+                        audioEngine.dampStrings(this.hoveredTarget.zone);
+                        spawnDampWaveEffect(this.tipPos.x, this.tipPos.y, this.hoveredTarget.zone);
+                        this.lastDampTime = nowMs;
+                        updateTelemetryLastNote(this.hoveredTarget, 0, 'خفه کردن سیم‌ها (Palm Mute)');
+                    }
+                    return;
+                }
+
+                // Priority B: Stage 1 - Travel / Repositioning Lock (قفل حرکت انتقالی)
+                // If whole hand is translating across bridges (high ||v_wrist|| without sharp rotational whip)
+                const isTranslatingFast = (
+                    this.vWrist.mag > config.travelLockThreshold &&
+                    this.vRel.mag < this.vWrist.mag * 1.45
+                );
+                if (isTranslatingFast) {
+                    this.state = 'TRAVEL_LOCKED';
+                    this.peakWhipSpeed = 0;
+                    this.lockedBridge = null;
+                    return;
+                }
+
+                // Priority C: RIZ_MODE (ریز هوشمند و پیوسته با قفل خرک)
+                if (this.isPinchRiz && this.hoveredTarget) {
+                    this.state = 'RIZ_MODE';
+                    if (!this.lockedBridge) {
+                        this.lockedBridge = this.hoveredTarget;
+                    }
+                    // If user deliberately moves far away (> 2 corridors), update locked bridge
+                    if (Math.abs(this.hoveredTarget.kharak - this.lockedBridge.kharak) >= 2) {
+                        this.lockedBridge = this.hoveredTarget;
+                    }
+                    const rizInterval = Math.max(46, 82 - Math.min(34, this.vRel.mag * 22));
+                    if (nowMs - this.lastRizPulseTime >= rizInterval) {
+                        const rizVel = Math.min(0.95, Math.max(0.38, 0.45 + this.vRel.mag * 0.35 + (Math.random() - 0.5) * 0.12));
+                        triggerSantoorStrike(this.lockedBridge, rizVel, this.side, 'ریز پیوسته (Riz Tremolo)');
+                        this.lastRizPulseTime = nowMs;
+                    }
+                    return;
+                } else {
+                    this.lockedBridge = null;
+                }
+
+                // Priority D: Stage 4 - Re-Arm Hysteresis & Cooldown (ناحیه مسلح‌سازی مجدد)
+                if (this.state === 'REBOUND') {
+                    const elapsed = nowMs - this.lastStrikeTime;
+                    const reboundUpDist = this.strikeApexY - this.tipPos.y;
+                    // Must wait >= 35ms AND lift Mezrab tip upward (or settle velocity) before re-arming
+                    if (elapsed >= 38 && (reboundUpDist > 7.5 || Math.abs(whipSpeed) < config.strikeThreshold * 0.4)) {
+                        this.state = 'ARMED';
+                        this.peakWhipSpeed = 0;
+                    } else {
+                        return;
+                    }
+                }
+
+                // Priority E: Stage 2 & 3 - Strike Apex Gating & Point-of-Impact Target Locking
+                if (this.state === 'ARMED') {
+                    // Check if wrist is stable enough to act as a hinge and Mezrab tip is whipping downward
+                    if (whipSpeed > config.strikeThreshold && this.vWrist.mag < config.travelLockThreshold * 1.2) {
+                        this.state = 'WHIPPING';
+                        this.peakWhipSpeed = whipSpeed;
+                    }
+                } else if (this.state === 'WHIPPING') {
+                    if (whipSpeed > this.peakWhipSpeed) {
+                        this.peakWhipSpeed = whipSpeed;
+                    }
+                    // Detect Deceleration / Rebound Apex: whip speed drops sharply below 55% of peak or reverses
+                    const hitApex = (whipSpeed <= this.peakWhipSpeed * 0.55) || (whipSpeed <= 0.05);
+                    if (hitApex) {
+                        // Stage 3: Point-of-Impact Target Locking at the exact millisecond of Apex
+                        const impactTarget = findSantoorTargetAt(this.tipPos.x, this.tipPos.y);
+                        if (impactTarget) {
+                            const normVelocity = Math.min(1.0, Math.max(0.22, this.peakWhipSpeed / (config.strikeThreshold * 2.6)));
+                            triggerSantoorStrike(impactTarget, normVelocity, this.side, 'تک‌مضراب شلاقی (Whip Apex)');
+                        }
+                        this.state = 'REBOUND';
+                        this.lastStrikeTime = nowMs;
+                        this.strikeApexY = this.tipPos.y;
+                        this.peakWhipSpeed = 0;
+                    }
+                }
+            }
+        }
+
+        /**
+         * ============================================================================
+         * 4. TRAPEZOIDAL 9-KHARAK SANTOOR GEOMETRY & VISUAL VIBRATION ENGINE
+         * ============================================================================
+         */
+        const appState = {
+            currentDastgahKey: 'shur_g',
+            isWoodMezrab: false,       // false = Felt Mezrab (نمدی), true = Bare Wooden Mezrab (چوبی لخت)
+            autoForearmRoll: true,
+            showCorridors: true,
+            cameraActive: false,
+
+            // Calibration Parameters
+            scale: 1.0,
+            yOffsetRatio: 0.54,
+            tiltDegrees: 22,
+            bodyOpacity: 0.90,
+
+            // Kinematics Thresholds (px/ms)
+            strikeThreshold: 0.55,
+            travelLockThreshold: 0.70,
+
+            // Computed Trapezoid Coordinates (updated on resize / calibration)
+            geom: {
+                cx: 0,
+                cy: 0,
+                topY: 0,
+                bottomY: 0,
+                height: 0,
+                bottomWidth: 0,
+                topWidth: 0,
+                corridors: [] // 9 horizontal bridge corridors (Kharak 1 at bottom to Kharak 9 at top)
+            },
+
+            // Visual animations
+            stringVibrations: {}, // key: `${zone}_${kharak}` -> { amp, phase, freq, color, time }
+            particles: [],
+            dampWaves: [],
+
+            // Mouse / Touch virtual Mezrab fallback (so user can also play directly with mouse/touch)
+            pointer: {
+                active: false,
+                x: 0,
+                y: 0,
+                prevX: 0,
+                prevY: 0,
+                lastMoveTime: 0,
+                isRizDown: false,
+                lockedTarget: null,
+                lastRizTime: 0
+            }
         };
-        pianoKeys.push(keyObj);
-        if (info.isBlack) {
-          blackKeys.push(keyObj);
-        } else {
-          whiteKeys.push(keyObj);
-        }
-      }
 
-      layoutPianoGeometry();
-    }
+        const rightHandCtrl = new HandMezrabController('right');
+        const leftHandCtrl = new HandMezrabController('left');
 
-    function layoutPianoGeometry() {
-      const W = canvas.width;
-      const H = canvas.height;
-      if (W === 0 || H === 0 || whiteKeys.length === 0) return;
+        const canvas = document.getElementById('arCanvas');
+        const ctx = canvas.getContext('2d');
+        const videoEl = document.getElementById('webcamVideo');
 
-      const marginX = Math.max(16, W * 0.035);
-      const totalWidth = W - marginX * 2;
-      const kbTop = H * config.keyboardTopRatio;
-      const kbHeight = Math.min(H - kbTop - 18, H * 0.34);
+        function recomputeSantoorGeometry() {
+            const W = canvas.width;
+            const H = canvas.height;
+            const s = appState.scale;
 
-      const whiteKeyWidth = totalWidth / whiteKeys.length;
-      const blackKeyWidth = whiteKeyWidth * 0.62;
-      const blackKeyHeight = kbHeight * 0.60;
+            const cx = W * 0.5;
+            const cy = H * appState.yOffsetRatio;
+            const trapHeight = Math.min(H * 0.64, W * 0.44) * s;
+            const bottomWidth = Math.min(W * 0.88, 1140) * s;
+            // Perspective foreshortening ratio from tilt angle
+            const tiltFactor = 0.52 + (38 - appState.tiltDegrees) * 0.0075;
+            const topWidth = bottomWidth * tiltFactor;
 
-      // Position White Keys sequentially
-      let currentWhiteIdx = 0;
-      for (let i = 0; i < pianoKeys.length; i++) {
-        const key = pianoKeys[i];
-        if (!key.isBlack) {
-          key.x = marginX + currentWhiteIdx * whiteKeyWidth;
-          key.y = kbTop;
-          key.w = whiteKeyWidth;
-          key.h = kbHeight;
-          currentWhiteIdx++;
-        }
-      }
+            const topY = cy - trapHeight * 0.48;
+            const bottomY = cy + trapHeight * 0.52;
 
-      // Position Black Keys accurately between adjacent white keys
-      let whiteCounter = 0;
-      for (let i = 0; i < pianoKeys.length; i++) {
-        const key = pianoKeys[i];
-        if (!key.isBlack) {
-          whiteCounter++;
-        } else {
-          // Black key sits on the boundary between (whiteCounter - 1) and (whiteCounter)
-          const centerX = marginX + whiteCounter * whiteKeyWidth;
-          key.x = centerX - blackKeyWidth / 2;
-          key.y = kbTop;
-          key.w = blackKeyWidth;
-          key.h = blackKeyHeight;
-        }
-      }
-    }
+            const corridors = [];
+            const tuning = DASTGAH_TUNINGS[appState.currentDastgahKey];
 
-    /**
-     * Adaptive EMA Smoother & Finger Kinematics State
-     * - When finger speed is very low (stationary jitter), alpha is small (~0.22) to stabilize.
-     * - When finger accelerates rapidly (strike or fast movement), alpha scales up toward 0.92
-     *   for ultra-low latency response.
-     */
-    class HandKinematicsTracker {
-      constructor() {
-        // Map of handIndex_landmarkIndex -> smoothed state
-        this.landmarksState = new Map();
-        // Map of fingerId ("H0_8", etc.) -> active key reference
-        this.fingerActiveKey = new Map();
-      }
+            // Kharak 1 is at the bottom (closest to player), Kharak 9 is at the top
+            for (let i = 0; i < 9; i++) {
+                const kharakNum = i + 1;
+                // Normalized vertical position from bottom (0) to top (1)
+                const tBottom = i / 9;
+                const tTop = (i + 1) / 9;
+                const tMid = (i + 0.5) / 9;
 
-      resetMissingHands(detectedHandCount) {
-        if (detectedHandCount === 0) {
-          // Release all finger-held keys if hands leave frame
-          for (const [fingerId, key] of this.fingerActiveKey.entries()) {
-            this.releaseFingerFromKey(fingerId, key);
-          }
-          this.fingerActiveKey.clear();
-          this.landmarksState.clear();
-        } else if (detectedHandCount === 1) {
-          // Clear second hand ("H1_*") if only 1 hand remains
-          for (const [fingerId, key] of this.fingerActiveKey.entries()) {
-            if (fingerId.startsWith('H1_')) {
-              this.releaseFingerFromKey(fingerId, key);
-              this.fingerActiveKey.delete(fingerId);
+                const yRowBottom = bottomY - tBottom * (bottomY - topY);
+                const yRowTop = bottomY - tTop * (bottomY - topY);
+                const yMid = bottomY - tMid * (bottomY - topY);
+
+                // Width of Santoor soundboard at this vertical slice
+                const halfWAtMid = (bottomWidth * (1 - tMid) + topWidth * tMid) * 0.5;
+                const leftEdgeX = cx - halfWAtMid;
+                const rightEdgeX = cx + halfWAtMid;
+                const rowWidth = rightEdgeX - leftEdgeX;
+
+                // Bridge X positions:
+                // Right Bridges (Zard / Brass): sit at ~ 72% from left edge (28% from right pinblock)
+                // Left Bridges (Sefid / Steel): sit at ~ 36% from left edge (leaving Posht-e-Kharak on the far left)
+                const zardBridgeX = leftEdgeX + rowWidth * 0.71;
+                const sefidBridgeX = leftEdgeX + rowWidth * 0.35;
+
+                const bridgeData = tuning.bridges[i];
+                const zardFreq = calcMicrotonalFreq(bridgeData.zard.midi, bridgeData.zard.cents);
+                const sefidFreq = calcMicrotonalFreq(bridgeData.sefid.midi, bridgeData.sefid.cents);
+                const poshtFreq = sefidFreq * 2.0; // Posht-e-Kharak is 1 octave above Sefid
+
+                corridors.push({
+                    kharak: kharakNum,
+                    yTop: yRowTop,
+                    yBottom: yRowBottom,
+                    yMid,
+                    leftEdgeX,
+                    rightEdgeX,
+                    zardBridgeX,
+                    sefidBridgeX,
+                    zones: {
+                        // Right side: Zard (Brass strings)
+                        zard: {
+                            zone: 'zard',
+                            kharak: kharakNum,
+                            xMin: cx + rowWidth * 0.02,
+                            xMax: rightEdgeX,
+                            bridgeX: zardBridgeX,
+                            freq: zardFreq,
+                            noteName: bridgeData.zard.name,
+                            latin: bridgeData.zard.latin,
+                            cents: bridgeData.zard.cents,
+                            label: `خرک ${kharakNum} زرد - ${bridgeData.zard.name}`
+                        },
+                        // Center-Left of Sefid Bridge: Main Sefid (White/Steel strings)
+                        sefid: {
+                            zone: 'sefid',
+                            kharak: kharakNum,
+                            xMin: sefidBridgeX - rowWidth * 0.02,
+                            xMax: cx + rowWidth * 0.02,
+                            bridgeX: sefidBridgeX,
+                            freq: sefidFreq,
+                            noteName: bridgeData.sefid.name,
+                            latin: bridgeData.sefid.latin,
+                            cents: bridgeData.sefid.cents,
+                            label: `خرک ${kharakNum} سفید - ${bridgeData.sefid.name}`
+                        },
+                        // Left of Sefid Bridge: Posht-e-Kharak (1 Octave Higher)
+                        posht: {
+                            zone: 'posht',
+                            kharak: kharakNum,
+                            xMin: leftEdgeX,
+                            xMax: sefidBridgeX - rowWidth * 0.02,
+                            bridgeX: sefidBridgeX,
+                            freq: poshtFreq,
+                            noteName: `${bridgeData.sefid.name} (پشت‌خرک)`,
+                            latin: bridgeData.sefid.latin.replace(/\d/, m => Number(m) + 1),
+                            cents: bridgeData.sefid.cents,
+                            label: `پشت‌خرک ${kharakNum} سفید - ${bridgeData.sefid.name}`
+                        }
+                    }
+                });
             }
-          }
+
+            appState.geom = {
+                cx,
+                cy,
+                topY,
+                bottomY,
+                height: bottomY - topY,
+                bottomWidth,
+                topWidth,
+                corridors
+            };
         }
-      }
 
-      updateHandLandmarks(handIdx, rawLandmarks, dtMs) {
-        const smoothed = [];
-        const dtNorm = Math.max(0.5, Math.min(2.5, dtMs / 16.67));
+        /**
+         * Finds which Kharak (1..9) and Acoustic Zone ('zard' | 'sefid' | 'posht') lies beneath (x, y)
+         */
+        function findSantoorTargetAt(x, y) {
+            const { corridors, topY, bottomY } = appState.geom;
+            if (y < topY - 12 || y > bottomY + 12) return null;
 
-        for (let i = 0; i < rawLandmarks.length; i++) {
-          const id = `H${handIdx}_${i}`;
-          // Mirror X coordinate so it matches mirrored webcam display
-          const rawX = 1.0 - rawLandmarks[i].x;
-          const rawY = rawLandmarks[i].y;
-          const rawZ = rawLandmarks[i].z;
+            for (let i = 0; i < corridors.length; i++) {
+                const c = corridors[i];
+                if (y >= c.yTop && y <= c.yBottom) {
+                    if (x < c.leftEdgeX - 18 || x > c.rightEdgeX + 18) return null;
 
-          if (!this.landmarksState.has(id)) {
-            this.landmarksState.set(id, {
-              x: rawX, y: rawY, z: rawZ,
-              vx: 0, vy: 0, vz: 0,
-              prevVy: 0
+                    let matchedZone = null;
+                    if (x >= c.zones.zard.xMin) {
+                        matchedZone = c.zones.zard;
+                    } else if (x >= c.zones.sefid.xMin) {
+                        matchedZone = c.zones.sefid;
+                    } else {
+                        matchedZone = c.zones.posht;
+                    }
+
+                    // Calculate normalized proximity to the bridge (1.0 = right on the bridge, 0.1 = far from bridge)
+                    const distFromBridge = Math.abs(x - matchedZone.bridgeX);
+                    const maxSpan = (c.rightEdgeX - c.leftEdgeX) * 0.32;
+                    const bridgeProx = Math.max(0.08, Math.min(1.0, 1.0 - (distFromBridge / maxSpan)));
+
+                    return {
+                        ...matchedZone,
+                        yMid: c.yMid,
+                        leftEdgeX: c.leftEdgeX,
+                        rightEdgeX: c.rightEdgeX,
+                        impactX: x,
+                        impactY: y,
+                        bridgeProx
+                    };
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Triggers both the 4-string physical audio synthesis and visual string vibration + impact particles
+         */
+        function triggerSantoorStrike(target, velocity, handSide = 'right', techniqueLabel = 'تک‌مضراب') {
+            if (!target) return;
+
+            // Check if forearm roll automatically switches Felt vs Bare Wood Mezrab
+            let useWood = appState.isWoodMezrab;
+            if (appState.autoForearmRoll) {
+                const ctrl = handSide === 'right' ? rightHandCtrl : leftHandCtrl;
+                if (ctrl.active && Math.abs(ctrl.forearmRollAngle) > 48 && Math.abs(ctrl.forearmRollAngle) < 135) {
+                    useWood = true;
+                }
+            }
+
+            audioEngine.strikeCourse({
+                freq: target.freq,
+                zone: target.zone,
+                velocity,
+                isWoodMezrab: useWood,
+                bridgeProx: target.bridgeProx || 0.35
             });
-          }
 
-          const st = this.landmarksState.get(id);
-          const dx = rawX - st.x;
-          const dy = rawY - st.y;
-          const dz = rawZ - st.z;
-          const instSpeed = Math.hypot(dx, dy);
+            // Register damped sine wave vibration for the 4 strings of this Kharak
+            const vibKey = `${target.zone}_${target.kharak}`;
+            appState.stringVibrations[vibKey] = {
+                amp: Math.min(9.5, 2.5 + velocity * 7.0),
+                phase: 0,
+                freq: target.freq,
+                time: performance.now()
+            };
 
-          // Adaptive EMA coefficient:
-          // Low speed (<0.003) -> alpha ~ 0.25 (kills webcam micro-jitter)
-          // High speed (>0.025) -> alpha ~ 0.94 (instantaneous response)
-          const speedRatio = Math.min(1.0, instSpeed / 0.024);
-          const alpha = 0.24 + speedRatio * 0.70;
-
-          const newX = st.x + alpha * dx;
-          const newY = st.y + alpha * dy;
-          const newZ = st.z + alpha * dz;
-
-          st.prevVy = st.vy;
-          st.vx = (newX - st.x) / dtNorm;
-          st.vy = (newY - st.y) / dtNorm;
-          st.vz = (newZ - st.z) / dtNorm;
-
-          st.x = newX;
-          st.y = newY;
-          st.z = newZ;
-
-          smoothed.push({
-            x: newX,
-            y: newY,
-            z: newZ,
-            vx: st.vx,
-            vy: st.vy,
-            vz: st.vz,
-            prevVy: st.prevVy
-          });
-        }
-
-        return smoothed;
-      }
-
-      processFingertips(handIdx, smoothedLandmarks, nowMs) {
-        const W = canvas.width;
-        const H = canvas.height;
-
-        for (const tipIdx of FINGERTIP_INDICES) {
-          const fingerId = `H${handIdx}_${tipIdx}`;
-          const pt = smoothedLandmarks[tipIdx];
-          const px = pt.x * W;
-          const py = pt.y * H;
-
-          // Find which key (if any) the fingertip is currently inside
-          // Check Black keys FIRST because they sit on top of White keys
-          let hitKey = null;
-          for (let i = 0; i < blackKeys.length; i++) {
-            const k = blackKeys[i];
-            if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) {
-              hitKey = k;
-              break;
+            // Spawn luminous gold/cyan impact particles at strike point
+            const px = target.impactX || target.bridgeX;
+            const py = target.yMid;
+            const pCount = Math.floor(5 + velocity * 9);
+            for (let i = 0; i < pCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 0.8 + Math.random() * 3.8 * velocity;
+                appState.particles.push({
+                    x: px,
+                    y: py,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd - 0.6,
+                    life: 1.0,
+                    size: 1.8 + Math.random() * 2.5,
+                    color: target.zone === 'zard' ? '#fbbf24' : (target.zone === 'sefid' ? '#67e8f9' : '#f472b6')
+                });
             }
-          }
-          if (!hitKey) {
-            for (let i = 0; i < whiteKeys.length; i++) {
-              const k = whiteKeys[i];
-              if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) {
-                hitKey = k;
-                break;
-              }
+
+            updateTelemetryLastNote(target, velocity, `${techniqueLabel} | ${useWood ? 'چوبی لخت' : 'نمدی'}`);
+        }
+
+        function spawnDampWaveEffect(x, y, zone) {
+            appState.dampWaves.push({
+                x,
+                y,
+                radius: 14,
+                maxRadius: 110,
+                alpha: 0.85,
+                color: zone === 'zard' ? '#f59e0b' : '#38bdf8'
+            });
+        }
+
+        function updateTelemetryLastNote(target, velocity, techText) {
+            const titleEl = document.getElementById('lastNoteTitle');
+            const techEl = document.getElementById('lastTechniqueInfo');
+            const freqEl = document.getElementById('lastFreqReadout');
+            const centsEl = document.getElementById('lastCentsReadout');
+
+            if (target) {
+                titleEl.textContent = `${target.label} (${target.latin})`;
+                freqEl.textContent = `${target.freq.toFixed(2)} Hz`;
+                const microTag = target.cents < 0 ? `کُرُن (${target.cents}¢)` : (target.cents > 0 ? `سوری (+${target.cents}¢)` : 'طبیعی (0¢)');
+                centsEl.textContent = `${microTag} | Vel: ${Math.round(velocity * 100)}%`;
             }
-          }
-
-          if (hitKey) {
-            hitKey.hovered = true;
-          }
-
-          const currentlyHeldKey = this.fingerActiveKey.get(fingerId);
-
-          // 1. Check for Note-Off (Release) if this finger is holding a key
-          if (currentlyHeldKey) {
-            const exitedKeyBounds = (hitKey !== currentlyHeldKey);
-            const liftedUpward = (pt.vy < config.vyReleaseThreshold);
-
-            if (exitedKeyBounds || liftedUpward) {
-              this.releaseFingerFromKey(fingerId, currentlyHeldKey);
-              this.fingerActiveKey.delete(fingerId);
+            if (techText) {
+                techEl.textContent = techText;
             }
-          }
+        }
 
-          // 2. Check for Note-On (Strike) with Anti-Transit Gating & Cooldown
-          if (hitKey && !this.fingerActiveKey.has(fingerId)) {
-            const absVx = Math.abs(pt.vx);
-            const vy = pt.vy; // Positive vy = moving downward into the keys
-            const vz = pt.vz; // Negative vz = pushing forward toward screen/camera
+        /**
+         * ============================================================================
+         * 5. REAL-TIME CANVAS RENDERER (SANTOR BODY, 4-STRING COURSES, MEZRABS & HUD)
+         * ============================================================================
+         */
+        function renderScene(nowMs) {
+            const W = canvas.width;
+            const H = canvas.height;
+            ctx.clearRect(0, 0, W, H);
 
-            // Anti-Transit Gate:
-            // When moving horizontally across octaves, |Vx| is large compared to Vy.
-            // We require downward velocity Vy > threshold AND Vy * ratio > |Vx|
-            const isDownwardStrike = (vy >= config.vyStrikeThreshold) && ((vy * config.antiTransitRatio) > absVx);
+            // 1. Render Mirrored Webcam Feed if Active, else rich Persian studio backdrop
+            if (appState.cameraActive && videoEl.readyState >= 2) {
+                ctx.save();
+                ctx.translate(W, 0);
+                ctx.scale(-1, 1);
+                // Cover-fit video onto canvas
+                const vw = videoEl.videoWidth || 1280;
+                const vh = videoEl.videoHeight || 720;
+                const scale = Math.max(W / vw, H / vh);
+                const dw = vw * scale;
+                const dh = vh * scale;
+                ctx.drawImage(videoEl, (W - dw) * 0.5, (H - dh) * 0.5, dw, dh);
+                ctx.restore();
 
-            // Also support deliberate Z-push strike when hovering steady inside the key
-            const isDepthStrike = (vz < -0.012 && vy > 0.0015 && absVx < 0.008);
-
-            // Cooldown check (30ms per key)
-            const cooldownPassed = (nowMs - hitKey.lastTriggerTime) >= config.keyCooldownMs;
-
-            if ((isDownwardStrike || isDepthStrike) && cooldownPassed) {
-              // Map velocity to expressive range [0.20 .. 1.0]
-              const rawStrength = Math.max(vy * 38, Math.abs(vz) * 18);
-              const strikeVelocity = Math.max(0.22, Math.min(1.0, rawStrength));
-
-              this.triggerKeyPress(fingerId, hitKey, strikeVelocity, px, py, nowMs, FINGER_COLORS[tipIdx]);
+                // Subtle dark vignette for high contrast string visibility over webcam
+                const vig = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.2, W * 0.5, H * 0.5, W * 0.75);
+                vig.addColorStop(0, 'rgba(10, 7, 5, 0.18)');
+                vig.addColorStop(1, 'rgba(8, 5, 3, 0.68)');
+                ctx.fillStyle = vig;
+                ctx.fillRect(0, 0, W, H);
+            } else {
+                const bgGrad = ctx.createRadialGradient(W * 0.5, H * 0.52, 50, W * 0.5, H * 0.52, Math.max(W, H) * 0.75);
+                bgGrad.addColorStop(0, '#23160d');
+                bgGrad.addColorStop(0.55, '#120b07');
+                bgGrad.addColorStop(1, '#070403');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, W, H);
             }
-          }
-        }
-      }
 
-      triggerKeyPress(fingerId, key, velocity, px, py, nowMs, color) {
-        key.lastTriggerTime = nowMs;
-        key.activeFingerIds.add(fingerId);
-        this.fingerActiveKey.set(fingerId, key);
+            // Determine hovered targets from Right Hand, Left Hand, and Mouse/Touch Pointer
+            const activeHovers = [];
+            if (rightHandCtrl.active && rightHandCtrl.hoveredTarget) {
+                activeHovers.push({ target: rightHandCtrl.hoveredTarget, side: 'right', state: rightHandCtrl.state });
+            }
+            if (leftHandCtrl.active && leftHandCtrl.hoveredTarget) {
+                activeHovers.push({ target: leftHandCtrl.hoveredTarget, side: 'left', state: leftHandCtrl.state });
+            }
+            if (appState.pointer.active) {
+                const ptTarget = findSantoorTargetAt(appState.pointer.x, appState.pointer.y);
+                if (ptTarget) activeHovers.push({ target: ptTarget, side: 'pointer', state: 'ARMED' });
+            }
 
-        if (!key.pressed) {
-          key.pressed = true;
-          key.velocity = velocity;
-          key.pressDepth = 1.0;
-          audioEngine.noteOn(key.midi, velocity);
-          updateLiveNoteHUD(key, velocity);
+            // 2. Render Trapezoidal 3D Walnut Santoor Soundboard & Pinblocks
+            drawSantoorInstrument(nowMs, activeHovers);
 
-          // Spawn visual AR ripple at fingertip impact point
-          visualRipples.push({
-            x: px,
-            y: py,
-            radius: 6,
-            maxRadius: 34 + velocity * 28,
-            alpha: 0.95,
-            color: color || '#38bdf8'
-          });
-        }
-      }
+            // 3. Render Damping Waves & Impact Particles
+            drawParticlesAndWaves();
 
-      releaseFingerFromKey(fingerId, key) {
-        if (!key) return;
-        key.activeFingerIds.delete(fingerId);
-        if (key.activeFingerIds.size === 0 && key.pressed) {
-          key.pressed = false;
-          audioEngine.noteOff(key.midi);
-        }
-      }
-    }
+            // 4. Render Virtual Wooden Mezrabs & Aim Cursors for Right & Left Hands
+            if (rightHandCtrl.active && (nowMs - rightHandCtrl.lastSeenTime < 600)) {
+                drawVirtualMezrab(rightHandCtrl, '#fbbf24', 'راست');
+            } else {
+                rightHandCtrl.active = false;
+            }
 
-    const kinematics = new HandKinematicsTracker();
+            if (leftHandCtrl.active && (nowMs - leftHandCtrl.lastSeenTime < 600)) {
+                drawVirtualMezrab(leftHandCtrl, '#38bdf8', 'چپ');
+            } else {
+                leftHandCtrl.active = false;
+            }
 
-    function updateLiveNoteHUD(key, velocity) {
-      const noteEl = document.getElementById('hud-note-name');
-      const freqEl = document.getElementById('hud-freq');
-      const velNumEl = document.getElementById('hud-vel-num');
-      const velBarEl = document.getElementById('hud-vel-bar');
+            // Render Pointer Mezrab when moving mouse / touching screen without webcam
+            if (appState.pointer.active && !rightHandCtrl.active && !leftHandCtrl.active) {
+                drawPointerMezrab(appState.pointer.x, appState.pointer.y);
+            }
 
-      noteEl.textContent = `${key.labelEn} (${key.labelFa})`;
-      freqEl.textContent = `${key.freq.toFixed(2)} Hz`;
+            // 5. Update Telemetry DOM HUD
+            updateHudDom();
 
-      const pct = Math.round(velocity * 100);
-      velNumEl.textContent = `${pct}%`;
-      velBarEl.style.width = `${pct}%`;
-    }
-
-    function updatePolyphonyHUD() {
-      const polyEl = document.getElementById('hud-polyphony');
-      if (polyEl) {
-        polyEl.textContent = audioEngine.activeVoices.size;
-      }
-    }
-
-    function renderPianoOverlay(ctx) {
-      const W = canvas.width;
-      const H = canvas.height;
-      if (whiteKeys.length === 0) return;
-
-      const firstKey = whiteKeys[0];
-      const lastKey = whiteKeys[whiteKeys.length - 1];
-      const kbX = firstKey.x;
-      const kbY = firstKey.y;
-      const kbW = (lastKey.x + lastKey.w) - firstKey.x;
-      const kbH = firstKey.h;
-
-      ctx.save();
-
-      // Top Acoustic Piano Wood/Carbon Header Bar above keys
-      const headerGrad = ctx.createLinearGradient(kbX, kbY - 18, kbX, kbY);
-      headerGrad.addColorStop(0, 'rgba(15, 23, 42, 0.92)');
-      headerGrad.addColorStop(1, 'rgba(30, 41, 59, 0.95)');
-      ctx.fillStyle = headerGrad;
-      ctx.beginPath();
-      ctx.roundRect(kbX - 6, kbY - 18, kbW + 12, 18, [10, 10, 0, 0]);
-      ctx.fill();
-
-      // Subtle red felt strip along the top of the keys (classic grand piano detail)
-      ctx.fillStyle = 'rgba(225, 29, 72, 0.85)';
-      ctx.fillRect(kbX, kbY - 3, kbW, 3);
-
-      // 1. Render White Keys
-      for (let i = 0; i < whiteKeys.length; i++) {
-        const k = whiteKeys[i];
-        // Smooth physical key return animation
-        if (k.pressed) {
-          k.pressDepth = Math.min(1.0, k.pressDepth + 0.35);
-        } else {
-          k.pressDepth = Math.max(0.0, k.pressDepth - 0.18);
+            requestAnimationFrame(renderScene);
         }
 
-        const pressOffsetY = k.pressDepth * 7;
-        const kx = k.x + 1;
-        const ky = k.y + pressOffsetY;
-        const kw = k.w - 2;
-        const kh = k.h - pressOffsetY;
+        function drawSantoorInstrument(nowMs, activeHovers) {
+            const { cx, topY, bottomY, bottomWidth, topWidth, corridors } = appState.geom;
+            const topLeftX = cx - topWidth * 0.5;
+            const topRightX = cx + topWidth * 0.5;
+            const botLeftX = cx - bottomWidth * 0.5;
+            const botRightX = cx + bottomWidth * 0.5;
+            const frameDepth = 22 * appState.scale;
 
-        // Key surface gradient
-        const grad = ctx.createLinearGradient(kx, ky, kx, ky + kh);
-        if (k.pressed) {
-          grad.addColorStop(0, 'rgba(56, 189, 248, 0.85)');
-          grad.addColorStop(0.5, 'rgba(14, 165, 233, 0.78)');
-          grad.addColorStop(1, 'rgba(2, 132, 199, 0.90)');
-        } else if (k.hovered) {
-          grad.addColorStop(0, 'rgba(241, 245, 249, 0.88)');
-          grad.addColorStop(1, 'rgba(186, 230, 253, 0.85)');
-        } else {
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0.78)');
-          grad.addColorStop(0.85, 'rgba(241, 245, 249, 0.82)');
-          grad.addColorStop(1, 'rgba(203, 213, 225, 0.88)');
-        }
+            ctx.save();
+            ctx.globalAlpha = appState.bodyOpacity;
 
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(kx, ky, kw, kh, [0, 0, 8, 8]);
-        ctx.fill();
-
-        // 3D Bottom Lip of White Key
-        ctx.fillStyle = k.pressed ? 'rgba(3, 105, 161, 0.95)' : 'rgba(148, 163, 184, 0.85)';
-        ctx.beginPath();
-        ctx.roundRect(kx, ky + kh - 8, kw, 8, [0, 0, 8, 8]);
-        ctx.fill();
-
-        // Border stroke
-        ctx.strokeStyle = k.pressed ? '#38bdf8' : 'rgba(15, 23, 42, 0.45)';
-        ctx.lineWidth = k.pressed ? 2 : 1;
-        ctx.stroke();
-
-        // Note Label at the bottom of white keys (Always show C notes or all notes if wide enough)
-        if (kw > 22 || k.labelEn.startsWith('C')) {
-          ctx.fillStyle = k.pressed ? '#ffffff' : (k.labelEn.startsWith('C') ? '#0284c7' : '#334155');
-          ctx.font = `${k.labelEn.startsWith('C') ? '700' : '600'} ${Math.min(12, Math.max(9, kw * 0.32))}px "JetBrains Mono", monospace`;
-          ctx.textAlign = 'center';
-          ctx.fillText(k.labelEn, kx + kw / 2, ky + kh - 14);
-        }
-      }
-
-      // 2. Render Black Keys on top
-      for (let i = 0; i < blackKeys.length; i++) {
-        const k = blackKeys[i];
-        if (k.pressed) {
-          k.pressDepth = Math.min(1.0, k.pressDepth + 0.35);
-        } else {
-          k.pressDepth = Math.max(0.0, k.pressDepth - 0.18);
-        }
-
-        const pressOffsetY = k.pressDepth * 5;
-        const kx = k.x;
-        const ky = k.y + pressOffsetY;
-        const kw = k.w;
-        const kh = k.h - pressOffsetY;
-
-        // Shadow underneath black key
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-        ctx.beginPath();
-        ctx.roundRect(kx + 2, ky + 4, kw, kh, [0, 0, 6, 6]);
-        ctx.fill();
-
-        const bGrad = ctx.createLinearGradient(kx, ky, kx, ky + kh);
-        if (k.pressed) {
-          bGrad.addColorStop(0, '#f43f5e');
-          bGrad.addColorStop(1, '#be123c');
-        } else if (k.hovered) {
-          bGrad.addColorStop(0, '#334155');
-          bGrad.addColorStop(1, '#0f172a');
-        } else {
-          bGrad.addColorStop(0, 'rgba(30, 41, 59, 0.96)');
-          bGrad.addColorStop(0.85, 'rgba(15, 23, 42, 0.98)');
-          bGrad.addColorStop(1, 'rgba(2, 6, 23, 0.99)');
-        }
-
-        ctx.fillStyle = bGrad;
-        ctx.beginPath();
-        ctx.roundRect(kx, ky, kw, kh, [0, 0, 6, 6]);
-        ctx.fill();
-
-        // Inner glossy highlight on black key
-        ctx.strokeStyle = k.pressed ? '#fda4af' : 'rgba(255, 255, 255, 0.16)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(kx + 2, ky + 1, kw - 4, kh - 7);
-      }
-
-      ctx.restore();
-    }
-
-    function renderHandsAndRipples(ctx, allSmoothedHands) {
-      const W = canvas.width;
-      const H = canvas.height;
-
-      ctx.save();
-
-      // Render expanding strike ripples
-      for (let i = visualRipples.length - 1; i >= 0; i--) {
-        const r = visualRipples[i];
-        r.radius += 2.6;
-        r.alpha -= 0.045;
-        if (r.alpha <= 0) {
-          visualRipples.splice(i, 1);
-          continue;
-        }
-        ctx.beginPath();
-        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = r.color;
-        ctx.globalAlpha = r.alpha;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1.0;
-
-      // Render each tracked hand skeleton
-      for (let h = 0; h < allSmoothedHands.length; h++) {
-        const hand = allSmoothedHands[h];
-
-        // Draw bones
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
-        for (const [a, b] of HAND_CONNECTIONS) {
-          const ptA = hand[a];
-          const ptB = hand[b];
-          ctx.beginPath();
-          ctx.moveTo(ptA.x * W, ptA.y * H);
-          ctx.lineTo(ptB.x * W, ptB.y * H);
-          ctx.stroke();
-        }
-
-        // Draw joints
-        for (let i = 0; i < hand.length; i++) {
-          const pt = hand[i];
-          const x = pt.x * W;
-          const y = pt.y * H;
-          const isTip = FINGERTIP_INDICES.includes(i);
-
-          if (!isTip) {
-            ctx.fillStyle = 'rgba(248, 250, 252, 0.8)';
+            // 3D Bottom Frame / Kalaf (کلاف پایین و پایه سنتور)
             ctx.beginPath();
-            ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+            ctx.moveTo(botLeftX - 14, bottomY);
+            ctx.lineTo(botRightX + 14, bottomY);
+            ctx.lineTo(botRightX + 6, bottomY + frameDepth);
+            ctx.lineTo(botLeftX - 6, bottomY + frameDepth);
+            ctx.closePath();
+            const sideGrad = ctx.createLinearGradient(botLeftX, bottomY, botRightX, bottomY + frameDepth);
+            sideGrad.addColorStop(0, '#1f1108');
+            sideGrad.addColorStop(0.5, '#3b2110');
+            sideGrad.addColorStop(1, '#1a0e06');
+            ctx.fillStyle = sideGrad;
             ctx.fill();
-          } else {
-            // Fingertip glowing AR target ring + velocity vector indicator
-            const color = FINGER_COLORS[i];
-            const fingerId = `H${h}_${i}`;
-            const isPressing = kinematics.fingerActiveKey.has(fingerId);
-            const radius = isPressing ? 12 : 8;
-
-            // Outer glow
-            ctx.beginPath();
-            ctx.arc(x, y, radius + 5, 0, Math.PI * 2);
-            ctx.fillStyle = isPressing ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.15)';
-            ctx.fill();
-
-            // Core fingertip orb
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fillStyle = isPressing ? '#ffffff' : color;
-            ctx.fill();
-            ctx.lineWidth = 2.5;
-            ctx.strokeStyle = color;
+            ctx.strokeStyle = 'rgba(217, 167, 74, 0.45)';
+            ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // Draw real-time velocity vector tail so user sees Anti-Transit vs Downward Strike
-            const vxPx = pt.vx * W * 2.2;
-            const vyPx = pt.vy * H * 2.2;
-            if (Math.hypot(vxPx, vyPx) > 3) {
-              ctx.beginPath();
-              ctx.moveTo(x, y);
-              ctx.lineTo(x + vxPx, y + vyPx);
-              ctx.strokeStyle = (pt.vy > config.vyStrikeThreshold) ? '#34d399' : '#f43f5e';
-              ctx.lineWidth = 2;
-              ctx.stroke();
+            // Left & Right Pinblock Rails (سیم‌گیر و گوشی‌ها)
+            ctx.beginPath();
+            ctx.moveTo(topLeftX - 14, topY);
+            ctx.lineTo(botLeftX - 14, bottomY);
+            ctx.lineTo(botLeftX - 6, bottomY + frameDepth);
+            ctx.lineTo(topLeftX - 10, topY + frameDepth * 0.6);
+            ctx.closePath();
+            ctx.fillStyle = '#241309';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(topRightX + 14, topY);
+            ctx.lineTo(botRightX + 14, bottomY);
+            ctx.lineTo(botRightX + 6, bottomY + frameDepth);
+            ctx.lineTo(topRightX + 10, topY + frameDepth * 0.6);
+            ctx.closePath();
+            ctx.fillStyle = '#241309';
+            ctx.fill();
+
+            // Main Trapezoidal Walnut Soundboard (صفحه رویی چوب گردو)
+            ctx.beginPath();
+            ctx.moveTo(topLeftX, topY);
+            ctx.lineTo(topRightX, topY);
+            ctx.lineTo(botRightX, bottomY);
+            ctx.lineTo(botLeftX, bottomY);
+            ctx.closePath();
+
+            const woodGrad = ctx.createLinearGradient(cx, topY, cx, bottomY);
+            woodGrad.addColorStop(0, '#3a2010');
+            woodGrad.addColorStop(0.35, '#522f18');
+            woodGrad.addColorStop(0.7, '#442613');
+            woodGrad.addColorStop(1, '#2c170b');
+            ctx.fillStyle = woodGrad;
+            ctx.fill();
+
+            // Khatamkari / Golden Inlay Border around Trapezoid
+            ctx.lineWidth = 3.5;
+            ctx.strokeStyle = '#d4a359';
+            ctx.stroke();
+            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = '#fef08a';
+            ctx.stroke();
+
+            // Draw Two Persian Sound Rosettes (گل‌های رزونانس صفحه سنتور)
+            const golY = topY + (bottomY - topY) * 0.52;
+            const golOffsetX = (topWidth + bottomWidth) * 0.14;
+            drawPersianRosette(cx - golOffsetX, golY, 22 * appState.scale);
+            drawPersianRosette(cx + golOffsetX, golY, 22 * appState.scale);
+
+            ctx.restore();
+
+            // 3. Draw Ergonomic Bridge Corridors (Pre-Strike Magnetic Hover Highlight)
+            corridors.forEach((c) => {
+                // Check if any active hand/pointer is hovering this corridor
+                const matchingHovers = activeHovers.filter(h => h.target && h.target.kharak === c.kharak);
+
+                if (appState.showCorridors) {
+                    ctx.save();
+                    ctx.beginPath();
+                    const tTop = c.kharak / 9;
+                    const tBot = (c.kharak - 1) / 9;
+                    const halfWTop = (bottomWidth * (1 - tTop) + topWidth * tTop) * 0.5;
+                    const halfWBot = (bottomWidth * (1 - tBot) + topWidth * tBot) * 0.5;
+
+                    ctx.moveTo(cx - halfWTop, c.yTop);
+                    ctx.lineTo(cx + halfWTop, c.yTop);
+                    ctx.lineTo(cx + halfWBot, c.yBottom);
+                    ctx.lineTo(cx - halfWBot, c.yBottom);
+                    ctx.closePath();
+
+                    if (matchingHovers.length > 0) {
+                        const primaryHover = matchingHovers[0];
+                        const isLocked = primaryHover.state === 'TRAVEL_LOCKED';
+                        ctx.fillStyle = isLocked
+                            ? 'rgba(239, 68, 68, 0.09)'
+                            : (primaryHover.target.zone === 'zard'
+                                ? 'rgba(251, 191, 36, 0.18)'
+                                : 'rgba(56, 189, 248, 0.18)');
+                        ctx.fill();
+                    } else if (c.kharak === 3 || c.kharak === 6) {
+                        // Subtle visual guide on reference Kharaks 3 and 6 (Sim-e-Shahed)
+                        ctx.fillStyle = 'rgba(255, 235, 180, 0.045)';
+                        ctx.fill();
+                    }
+
+                    // Horizontal corridor divider line
+                    ctx.strokeStyle = 'rgba(212, 163, 89, 0.12)';
+                    ctx.lineWidth = 0.8;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 4. Draw Tuning Pegs (گوشی‌ها) on Right and Hitch Pins (سیم‌گیرها) on Left
+                ctx.save();
+                for (let s = -1.5; s <= 1.5; s += 1) {
+                    const sy = c.yMid + s * 2.1 * appState.scale;
+                    // Right Tuning Pegs
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillRect(c.rightEdgeX + 3, sy - 1, 6, 2);
+                    // Left Hitch Pins
+                    ctx.fillStyle = '#d97706';
+                    ctx.beginPath();
+                    ctx.arc(c.leftEdgeX - 4, sy, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                // 5. Draw 4-String Unison Courses (Zard Brass Course & Sefid Steel Course) with Damped Sine Vibration
+                const zardVibKey = `zard_${c.kharak}`;
+                const sefidVibKey = `sefid_${c.kharak}`;
+                const poshtVibKey = `posht_${c.kharak}`;
+
+                const zardHovered = matchingHovers.some(h => h.target.zone === 'zard' && h.state !== 'TRAVEL_LOCKED');
+                const sefidHovered = matchingHovers.some(h => h.target.zone === 'sefid' && h.state !== 'TRAVEL_LOCKED');
+                const poshtHovered = matchingHovers.some(h => h.target.zone === 'posht' && h.state !== 'TRAVEL_LOCKED');
+
+                // Sefid & Posht-e-Kharak Course (4 Steel Strings slightly offset vertically above Zard course)
+                const sefidY = c.yMid - 3.2 * appState.scale;
+                drawQuadStringCourse(
+                    c.leftEdgeX,
+                    c.sefidBridgeX,
+                    sefidY,
+                    poshtVibKey,
+                    poshtHovered ? '#f472b6' : '#cbd5e1',
+                    poshtHovered,
+                    nowMs
+                );
+                drawQuadStringCourse(
+                    c.sefidBridgeX,
+                    c.rightEdgeX,
+                    sefidY,
+                    sefidVibKey,
+                    sefidHovered ? '#67e8f9' : '#e2e8f0',
+                    sefidHovered,
+                    nowMs
+                );
+
+                // Zard Course (4 Brass Strings)
+                const zardY = c.yMid + 3.2 * appState.scale;
+                drawQuadStringCourse(
+                    c.leftEdgeX,
+                    c.rightEdgeX,
+                    zardY,
+                    zardVibKey,
+                    zardHovered ? '#fde047' : '#d99b26',
+                    zardHovered,
+                    nowMs
+                );
+
+                // 6. Draw the 18 Walnut Bridges (۹ خرک راست زرد و ۹ خرک چپ سفید)
+                drawKharakBridge(c.zardBridgeX, zardY, c.kharak, c.zones.zard.name, 'zard', zardHovered);
+                drawKharakBridge(c.sefidBridgeX, sefidY, c.kharak, c.zones.sefid.name, 'sefid', sefidHovered || poshtHovered);
+            });
+        }
+
+        function drawPersianRosette(x, y, radius) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#140a05';
+            ctx.fill();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = 'rgba(217, 167, 74, 0.6)';
+            ctx.stroke();
+
+            for (let i = 0; i < 8; i++) {
+                ctx.rotate(Math.PI / 4);
+                ctx.beginPath();
+                ctx.ellipse(radius * 0.45, 0, radius * 0.35, radius * 0.16, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(217, 167, 74, 0.45)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
             }
-          }
+            ctx.restore();
         }
-      }
 
-      ctx.restore();
-    }
-
-    let handsDetector = null;
-    let cameraInstance = null;
-    let cameraActive = false;
-    let latestHandsResults = null;
-    let lastFrameTime = performance.now();
-    let fpsCounter = 60;
-
-    async function initMediaPipeHands() {
-      if (handsDetector) return;
-
-      handsDetector = new Hands({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      });
-
-      handsDetector.setOptions({
-        maxNumHands: 2,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.65,
-        minTrackingConfidence: 0.65
-      });
-
-      handsDetector.onResults((results) => {
-        latestHandsResults = results;
-      });
-    }
-
-    async function toggleWebcamAR() {
-      const btnText = document.getElementById('btn-camera-text');
-      const statusText = document.getElementById('tracking-status-text');
-      const statusLed = document.getElementById('status-led');
-
-      audioEngine.init();
-
-      if (cameraActive) {
-        if (cameraInstance) {
-          await cameraInstance.stop();
-        }
-        cameraActive = false;
-        latestHandsResults = null;
-        kinematics.resetMissingHands(0);
-        btnText.textContent = 'فعال‌سازی دوربین AR';
-        statusText.textContent = 'دوربین متوقف شد (حالت لمس/ماوس فعال است)';
-        statusLed.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 ring-2 ring-slate-900';
-        return;
-      }
-
-      try {
-        btnText.textContent = 'در حال اتصال...';
-        statusText.textContent = 'در حال بارگذاری مدل سه‌بعدی دست...';
-        await initMediaPipeHands();
-
-        cameraInstance = new Camera(videoEl, {
-          onFrame: async () => {
-            if (handsDetector && cameraActive) {
-              await handsDetector.send({ image: videoEl });
+        function drawQuadStringCourse(xStart, xEnd, yCenter, vibKey, baseColor, isHovered, nowMs) {
+            const vib = appState.stringVibrations[vibKey];
+            let currentAmp = 0;
+            if (vib) {
+                const ageSec = (nowMs - vib.time) / 1000;
+                // Exponential decay matching acoustic sustain
+                currentAmp = vib.amp * Math.exp(-ageSec * 1.45);
+                if (currentAmp < 0.08) {
+                    delete appState.stringVibrations[vibKey];
+                    currentAmp = 0;
+                }
             }
-          },
-          width: 1280,
-          height: 720,
-          facingMode: 'user'
-        });
 
-        await cameraInstance.start();
-        cameraActive = true;
-        btnText.textContent = 'توقف دوربین AR';
-        statusText.textContent = 'ردیابی دو دست فعال است (۶۰ فریم بر ثانیه)';
-        statusLed.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-slate-900 animate-pulse';
-        showToast('دوربین واقعیت افزوده فعال شد! دستان خود را روبروی کلیدها بگیرید.');
-      } catch (err) {
-        cameraActive = false;
-        btnText.textContent = 'فعال‌سازی دوربین AR';
-        statusText.textContent = 'عدم دسترسی به وب‌کم — حالت لمس و ماوس فعال است';
-        statusLed.className = 'absolute -top-1 -right-1 w-3 h-3 rounded-full bg-rose-500 ring-2 ring-slate-900';
-        showToast('دسترسی به وب‌کم امکان‌پذیر نشد. می‌توانید با ماوس یا لمس صفحه بنوازید.');
-      }
-    }
+            ctx.save();
+            const offsets = [-2.2, -0.75, 0.75, 2.2]; // 4 unison strings per course
+            ctx.strokeStyle = baseColor;
+            ctx.lineWidth = isHovered ? 1.45 : 0.95;
 
-    function renderARLoop(nowMs) {
-      const dtMs = Math.max(1, nowMs - lastFrameTime);
-      lastFrameTime = nowMs;
+            if (isHovered || currentAmp > 0.5) {
+                ctx.shadowColor = baseColor;
+                ctx.shadowBlur = isHovered ? 8 : Math.min(12, currentAmp * 2);
+            }
 
-      // Smooth FPS telemetry
-      const currentFps = Math.min(60, Math.round(1000 / dtMs));
-      fpsCounter = Math.round(fpsCounter * 0.9 + currentFps * 0.1);
-      const fpsEl = document.getElementById('hud-fps');
-      if (fpsEl) fpsEl.textContent = `${fpsCounter} FPS`;
+            for (let s = 0; s < 4; s++) {
+                const sy = yCenter + offsets[s] * appState.scale;
+                ctx.beginPath();
+                ctx.moveTo(xStart, sy);
 
-      const W = canvas.width;
-      const H = canvas.height;
-
-      // Clear hover states before frame evaluation
-      for (let i = 0; i < pianoKeys.length; i++) {
-        pianoKeys[i].hovered = false;
-      }
-
-      // 1. Draw Mirrored Webcam Feed or Studio Dark Backdrop
-      if (cameraActive && videoEl.readyState >= 2) {
-        ctx.save();
-        ctx.translate(W, 0);
-        ctx.scale(-1, 1);
-        // Cover viewport proportionally
-        const vidW = videoEl.videoWidth || 1280;
-        const vidH = videoEl.videoHeight || 720;
-        const scale = Math.max(W / vidW, H / vidH);
-        const drawW = vidW * scale;
-        const drawH = vidH * scale;
-        const offsetX = (W - drawW) / 2;
-        const offsetY = (H - drawH) / 2;
-        ctx.drawImage(videoEl, offsetX, offsetY, drawW, drawH);
-        ctx.restore();
-
-        // Subtle atmospheric vignette so AR HUD & Piano pop visually
-        const vig = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.75);
-        vig.addColorStop(0, 'rgba(5, 8, 17, 0.08)');
-        vig.addColorStop(1, 'rgba(5, 8, 17, 0.55)');
-        ctx.fillStyle = vig;
-        ctx.fillRect(0, 0, W, H);
-      } else {
-        // Sleek ambient studio background when camera is off
-        const bgGrad = ctx.createRadialGradient(W * 0.5, H * 0.35, 10, W * 0.5, H * 0.5, W * 0.8);
-        bgGrad.addColorStop(0, '#0f172a');
-        bgGrad.addColorStop(1, '#020617');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, W, H);
-
-        // Subtle perspective stage grid lines
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.06)';
-        ctx.lineWidth = 1;
-        const gridStep = 60;
-        for (let x = 0; x < W; x += gridStep) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, H);
-          ctx.stroke();
+                if (currentAmp > 0.1) {
+                    const segs = 14;
+                    const span = xEnd - xStart;
+                    const phase = nowMs * 0.065 + s * 0.9;
+                    for (let k = 1; k <= segs; k++) {
+                        const t = k / segs;
+                        const px = xStart + span * t;
+                        // Standing wave envelope sin(pi * t)
+                        const waveY = Math.sin(t * Math.PI) * Math.sin(phase + t * 6) * currentAmp;
+                        ctx.lineTo(px, sy + waveY);
+                    }
+                } else {
+                    ctx.lineTo(xEnd, sy);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
         }
-        for (let y = 0; y < H; y += gridStep) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(W, y);
-          ctx.stroke();
+
+        function drawKharakBridge(x, y, kharakNum, noteName, zoneType, isHighlighted) {
+            const r = (isHighlighted ? 11.5 : 9.5) * appState.scale;
+            ctx.save();
+
+            // Shadow under wooden Kharak pawn
+            ctx.beginPath();
+            ctx.arc(x, y + 3, r * 1.05, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fill();
+
+            // Turned Hardwood Kharak Body
+            const grad = ctx.createRadialGradient(x - 2, y - 2, 1, x, y, r);
+            if (isHighlighted) {
+                grad.addColorStop(0, '#fef08a');
+                grad.addColorStop(0.6, zoneType === 'zard' ? '#f59e0b' : '#06b6d4');
+                grad.addColorStop(1, '#451a03');
+            } else {
+                grad.addColorStop(0, '#b47b38');
+                grad.addColorStop(0.65, '#6b3e17');
+                grad.addColorStop(1, '#2e1808');
+            }
+
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Metallic top rod (مفتول روی خرک)
+            ctx.lineWidth = isHighlighted ? 2.2 : 1.4;
+            ctx.strokeStyle = isHighlighted ? '#ffffff' : '#fcd34d';
+            ctx.stroke();
+
+            // Kharak Number inside Bridge
+            ctx.fillStyle = '#fffbeb';
+            ctx.font = `bold ${Math.round(9.5 * appState.scale)}px Vazirmatn, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(kharakNum), x, y + 0.5);
+
+            // Persian Note Badge next to Bridge
+            const labelOffsetX = zoneType === 'zard' ? (r + 28 * appState.scale) : -(r + 28 * appState.scale);
+            ctx.fillStyle = isHighlighted ? 'rgba(15, 10, 6, 0.92)' : 'rgba(15, 10, 6, 0.68)';
+            const badgeW = 48 * appState.scale;
+            const badgeH = 15 * appState.scale;
+            ctx.beginPath();
+            ctx.roundRect(x + labelOffsetX - badgeW * 0.5, y - badgeH * 0.5, badgeW, badgeH, 4);
+            ctx.fill();
+            if (isHighlighted) {
+                ctx.strokeStyle = zoneType === 'zard' ? '#fbbf24' : '#38bdf8';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = isHighlighted ? '#fef08a' : (zoneType === 'zard' ? '#fcd34d' : '#a5f3fc');
+            ctx.font = `600 ${Math.round(9 * appState.scale)}px Vazirmatn, sans-serif`;
+            const shortNote = noteName.split(' ')[0] + (noteName.includes('کُرُن') ? '𝄳' : '');
+            ctx.fillText(shortNote, x + labelOffsetX, y + 0.5);
+
+            ctx.restore();
         }
-      }
 
-      // 2. Process 3D Hand Kinematics if available
-      const allSmoothedHands = [];
-      if (cameraActive && latestHandsResults && latestHandsResults.multiHandLandmarks) {
-        const rawHands = latestHandsResults.multiHandLandmarks;
-        kinematics.resetMissingHands(rawHands.length);
+        function drawVirtualMezrab(ctrl, color, labelFa) {
+            const { ringPos, tipPos, wristPos, state } = ctrl;
+            const isLocked = state === 'TRAVEL_LOCKED';
+            const isRiz = state === 'RIZ_MODE';
+            const isMute = state === 'MUTE_PALM';
 
-        for (let h = 0; h < rawHands.length; h++) {
-          const smoothedHand = kinematics.updateHandLandmarks(h, rawHands[h], dtMs);
-          kinematics.processFingertips(h, smoothedHand, nowMs);
-          allSmoothedHands.push(smoothedHand);
+            ctx.save();
+
+            // Subtle skeletal link from wrist to grip ring
+            ctx.beginPath();
+            ctx.moveTo(wristPos.x, wristPos.y);
+            ctx.lineTo(ringPos.x, ringPos.y);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Delicate Persian Wooden Mezrab Shaft + Finger Ring + Curved Tip
+            const angle = Math.atan2(tipPos.y - ringPos.y, tipPos.x - ringPos.x);
+
+            // Finger Ring at base of Mezrab
+            ctx.beginPath();
+            ctx.arc(ringPos.x, ringPos.y, 11, 0, Math.PI * 2);
+            ctx.strokeStyle = isLocked ? '#ef4444' : '#d97706';
+            ctx.lineWidth = 3.5;
+            ctx.stroke();
+
+            // Main Mezrab Shaft
+            ctx.beginPath();
+            ctx.moveTo(ringPos.x, ringPos.y);
+            ctx.lineTo(tipPos.x, tipPos.y);
+            ctx.strokeStyle = isLocked ? 'rgba(239, 68, 68, 0.65)' : '#f59e0b';
+            ctx.lineWidth = 4.2;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Mezrab Tip (Namad / Felt pad or Bare Wood head) & Aim Cursor
+            const tipRadius = isRiz ? 11 : 8.5;
+            ctx.beginPath();
+            ctx.arc(tipPos.x, tipPos.y, tipRadius, 0, Math.PI * 2);
+            ctx.fillStyle = isLocked
+                ? 'rgba(239, 68, 68, 0.85)'
+                : (isMute ? '#a855f7' : color);
+            ctx.shadowColor = isLocked ? '#ef4444' : color;
+            ctx.shadowBlur = 16;
+            ctx.fill();
+
+            // Precision Aim Crosshair around Mezrab Tip
+            ctx.beginPath();
+            ctx.arc(tipPos.x, tipPos.y, tipRadius + 6, 0, Math.PI * 2);
+            ctx.strokeStyle = isLocked ? 'rgba(239, 68, 68, 0.7)' : 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 1.3;
+            ctx.stroke();
+
+            // Floating State Badge beside Mezrab
+            ctx.fillStyle = 'rgba(12, 8, 5, 0.82)';
+            ctx.beginPath();
+            ctx.roundRect(tipPos.x - 36, tipPos.y - 32, 72, 16, 5);
+            ctx.fill();
+            ctx.fillStyle = isLocked ? '#fca5a5' : '#fef08a';
+            ctx.font = 'bold 9.5px Vazirmatn, monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${labelFa}: ${state}`, tipPos.x, tipPos.y - 22);
+
+            ctx.restore();
         }
-      }
 
-      // 3. Render AR Piano Keyboard Overlay
-      renderPianoOverlay(ctx);
+        function drawPointerMezrab(x, y) {
+            ctx.save();
+            // Wooden shaft angled naturally toward pointer tip
+            const baseX = x + 48;
+            const baseY = y + 64;
+            ctx.beginPath();
+            ctx.arc(baseX, baseY, 9, 0, Math.PI * 2);
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 3;
+            ctx.stroke();
 
-      // 4. Render 3D Hand Skeletons & Velocity Vectors on top of Piano
-      renderHandsAndRipples(ctx, allSmoothedHands);
+            ctx.beginPath();
+            ctx.moveTo(baseX, baseY);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3.8;
+            ctx.stroke();
 
-      requestAnimationFrame(renderARLoop);
-    }
-
-    let activePointers = new Map(); // pointerId -> key
-
-    function findKeyAtPoint(px, py) {
-      for (let i = 0; i < blackKeys.length; i++) {
-        const k = blackKeys[i];
-        if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) return k;
-      }
-      for (let i = 0; i < whiteKeys.length; i++) {
-        const k = whiteKeys[i];
-        if (px >= k.x && px <= k.x + k.w && py >= k.y && py <= k.y + k.h) return k;
-      }
-      return null;
-    }
-
-    canvas.addEventListener('pointerdown', (e) => {
-      audioEngine.init();
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      const hitKey = findKeyAtPoint(px, py);
-      if (hitKey) {
-        const fingerId = `PTR_${e.pointerId}`;
-        // Calculate velocity from vertical position on the key (lower on key = higher velocity)
-        const relY = (py - hitKey.y) / hitKey.h;
-        const vel = Math.max(0.35, Math.min(1.0, 0.4 + relY * 0.6));
-        kinematics.triggerKeyPress(fingerId, hitKey, vel, px, py, performance.now(), '#38bdf8');
-        activePointers.set(e.pointerId, hitKey);
-      }
-    });
-
-    canvas.addEventListener('pointermove', (e) => {
-      if (!activePointers.has(e.pointerId)) return;
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      const hitKey = findKeyAtPoint(px, py);
-      const prevKey = activePointers.get(e.pointerId);
-      const fingerId = `PTR_${e.pointerId}`;
-
-      if (hitKey !== prevKey) {
-        if (prevKey) kinematics.releaseFingerFromKey(fingerId, prevKey);
-        if (hitKey) {
-          kinematics.triggerKeyPress(fingerId, hitKey, 0.72, px, py, performance.now(), '#38bdf8');
-          activePointers.set(e.pointerId, hitKey);
-        } else {
-          activePointers.delete(e.pointerId);
+            ctx.beginPath();
+            ctx.arc(x, y, 7, 0, Math.PI * 2);
+            ctx.fillStyle = '#fef08a';
+            ctx.shadowColor = '#fbbf24';
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.restore();
         }
-      }
-    });
 
-    function handlePointerUp(e) {
-      if (activePointers.has(e.pointerId)) {
-        const prevKey = activePointers.get(e.pointerId);
-        const fingerId = `PTR_${e.pointerId}`;
-        kinematics.releaseFingerFromKey(fingerId, prevKey);
-        activePointers.delete(e.pointerId);
-      }
-    }
-    canvas.addEventListener('pointerup', handlePointerUp);
-    canvas.addEventListener('pointercancel', handlePointerUp);
+        function drawParticlesAndWaves() {
+            // Particles
+            for (let i = appState.particles.length - 1; i >= 0; i--) {
+                const p = appState.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.08;
+                p.life -= 0.032;
+                if (p.life <= 0) {
+                    appState.particles.splice(i, 1);
+                    continue;
+                }
+                ctx.save();
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      layoutPianoGeometry();
-    }
-
-    window.addEventListener('resize', resizeCanvas);
-
-    // Camera button
-    document.getElementById('btn-camera').addEventListener('click', toggleWebcamAR);
-
-    // Sustain Pedal button & Spacebar shortcut
-    const btnSustain = document.getElementById('btn-sustain');
-    const sustainIndicator = document.getElementById('sustain-indicator');
-
-    function setSustainState(active) {
-      config.sustainActive = active;
-      if (active) {
-        sustainIndicator.classList.replace('bg-slate-500', 'bg-amber-400');
-        sustainIndicator.classList.add('shadow-[0_0_10px_#fbbf24]');
-        btnSustain.classList.add('border-amber-400/50', 'bg-amber-500/15');
-      } else {
-        sustainIndicator.classList.replace('bg-amber-400', 'bg-slate-500');
-        sustainIndicator.classList.remove('shadow-[0_0_10px_#fbbf24]');
-        btnSustain.classList.remove('border-amber-400/50', 'bg-amber-500/15');
-        audioEngine.releaseSustainedNotes();
-      }
-    }
-
-    btnSustain.addEventListener('click', () => {
-      setSustainState(!config.sustainActive);
-    });
-
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' && !e.repeat) {
-        e.preventDefault();
-        setSustainState(true);
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        setSustainState(false);
-      }
-    });
-
-    // Audio Recorder button
-    document.getElementById('btn-record').addEventListener('click', () => {
-      const isRec = audioEngine.toggleRecording();
-      const recDot = document.getElementById('record-dot');
-      const recText = document.getElementById('record-text');
-      if (isRec) {
-        recDot.classList.add('recording-dot');
-        recText.textContent = 'توقف ضبط';
-      } else {
-        recDot.classList.remove('recording-dot');
-        recText.textContent = 'ضبط صدا';
-      }
-    });
-
-    // Settings drawer toggle
-    const settingsPanel = document.getElementById('settings-panel');
-    document.getElementById('btn-settings').addEventListener('click', () => {
-      settingsPanel.classList.toggle('-translate-x-[120%]');
-      settingsPanel.classList.toggle('opacity-0');
-    });
-    document.getElementById('btn-close-settings').addEventListener('click', () => {
-      settingsPanel.classList.add('-translate-x-[120%]', 'opacity-0');
-    });
-
-    // Octave buttons
-    const octaveBtns = document.querySelectorAll('.octave-btn');
-    octaveBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const oct = parseInt(btn.getAttribute('data-octaves'), 10);
-        config.octaves = oct;
-        // Adjust base octave automatically if 5 octaves is selected so it stays within MIDI range
-        if (config.baseOctave + config.octaves > 7) {
-          config.baseOctave = 7 - config.octaves;
-          document.getElementById('slider-base-octave').value = config.baseOctave;
-          document.getElementById('lbl-base-octave').textContent = `C${config.baseOctave}`;
+            // Damping Waves
+            for (let i = appState.dampWaves.length - 1; i >= 0; i--) {
+                const w = appState.dampWaves[i];
+                w.radius += 4.2;
+                w.alpha -= 0.035;
+                if (w.alpha <= 0) {
+                    appState.dampWaves.splice(i, 1);
+                    continue;
+                }
+                ctx.save();
+                ctx.globalAlpha = w.alpha;
+                ctx.strokeStyle = w.color;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
         }
-        octaveBtns.forEach(b => {
-          b.className = 'octave-btn py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-mono-tech text-[11px] border border-white/10';
-        });
-        btn.className = 'octave-btn py-1.5 rounded-lg bg-sky-500/30 text-sky-200 font-mono-tech text-[11px] border border-sky-400/50 font-bold';
-        const keyCount = oct === 5 ? 61 : oct * 12;
-        document.getElementById('lbl-octaves').textContent = `${keyCount} Keys (${oct} Oct)`;
-        buildPianoKeyboard();
-      });
-    });
 
-    // Sliders
-    document.getElementById('slider-base-octave').addEventListener('input', (e) => {
-      config.baseOctave = parseInt(e.target.value, 10);
-      document.getElementById('lbl-base-octave').textContent = `C${config.baseOctave}`;
-      buildPianoKeyboard();
-    });
+        function updateHudDom() {
+            const applyCard = (ctrl, prefix) => {
+                const badge = document.getElementById(`${prefix}StateBadge`);
+                const velRel = document.getElementById(`${prefix}VelRel`);
+                const velWrist = document.getElementById(`${prefix}VelWrist`);
+                const velBar = document.getElementById(`${prefix}VelBar`);
+                const hoverEl = document.getElementById(`${prefix}HoverTarget`);
 
-    document.getElementById('slider-vy-thresh').addEventListener('input', (e) => {
-      config.vyStrikeThreshold = parseFloat(e.target.value);
-      const val = config.vyStrikeThreshold;
-      const lbl = document.getElementById('lbl-vy-thresh');
-      if (val <= 0.004) lbl.textContent = 'بسیار حساس';
-      else if (val <= 0.008) lbl.textContent = 'حساس (متعادل)';
-      else lbl.textContent = 'ضربه محکم';
-    });
+                if (!ctrl.active) {
+                    badge.textContent = 'STANDBY';
+                    badge.className = 'state-badge text-[10px] px-1.5 py-0.5 rounded bg-stone-800 text-stone-400 border border-stone-600/40 font-mono';
+                    velRel.textContent = '0.00 px/ms';
+                    velWrist.textContent = '0.00 px/ms';
+                    velBar.style.width = '0%';
+                    hoverEl.textContent = '---';
+                    return;
+                }
 
-    document.getElementById('slider-transit').addEventListener('input', (e) => {
-      config.antiTransitRatio = parseFloat(e.target.value);
-      document.getElementById('lbl-transit').textContent = `${config.antiTransitRatio.toFixed(2)}x`;
-    });
+                badge.textContent = ctrl.state;
+                if (ctrl.state === 'TRAVEL_LOCKED') {
+                    badge.className = 'state-badge text-[10px] px-1.5 py-0.5 rounded bg-red-950 text-red-300 border border-red-500/50 font-mono';
+                } else if (ctrl.state === 'WHIPPING' || ctrl.state === 'RIZ_MODE') {
+                    badge.className = 'state-badge text-[10px] px-1.5 py-0.5 rounded bg-amber-900 text-amber-200 border border-amber-400 font-mono';
+                } else if (ctrl.state === 'MUTE_PALM') {
+                    badge.className = 'state-badge text-[10px] px-1.5 py-0.5 rounded bg-purple-950 text-purple-200 border border-purple-400 font-mono';
+                } else {
+                    badge.className = 'state-badge text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-mono';
+                }
 
-    document.getElementById('slider-reverb').addEventListener('input', (e) => {
-      const mix = parseFloat(e.target.value);
-      audioEngine.setReverbMix(mix);
-      document.getElementById('lbl-reverb').textContent = `${Math.round(mix * 100)}%`;
-    });
+                velRel.textContent = `${ctrl.vRel.mag.toFixed(2)} px/ms`;
+                velWrist.textContent = `${ctrl.vWrist.mag.toFixed(2)} px/ms`;
+                const pct = Math.min(100, Math.round((ctrl.vRel.mag / (appState.strikeThreshold * 2.2)) * 100));
+                velBar.style.width = `${pct}%`;
+                hoverEl.textContent = ctrl.hoveredTarget ? `خرک ${ctrl.hoveredTarget.kharak} (${ctrl.hoveredTarget.noteName.split(' ')[0]})` : 'خارج از خرک';
+            };
 
-    document.getElementById('slider-kb-pos').addEventListener('input', (e) => {
-      config.keyboardTopRatio = parseFloat(e.target.value);
-      layoutPianoGeometry();
-    });
+            applyCard(rightHandCtrl, 'rh');
+            applyCard(leftHandCtrl, 'lh');
+        }
 
-    window.onload = function () {
-      resizeCanvas();
-      buildPianoKeyboard();
-      requestAnimationFrame(renderARLoop);
-      // Automatically attempt to start AR webcam for seamless experience
-      toggleWebcamAR();
-    };
-  </script>
+        /**
+         * ============================================================================
+         * 6. MEDIAPIPE HANDS & WEBCAM STREAM INTEGRATION
+         * ============================================================================
+         */
+        let handsInstance = null;
+        let cameraInstance = null;
+
+        async function toggleWebcamAR() {
+            const btnText = document.getElementById('cameraToggleText');
+            const statusBadge = document.getElementById('camStatusBadge');
+
+            if (appState.cameraActive) {
+                if (cameraInstance && cameraInstance.stop) {
+                    await cameraInstance.stop();
+                }
+                appState.cameraActive = false;
+                rightHandCtrl.active = false;
+                leftHandCtrl.active = false;
+                btnText.textContent = 'فعال‌سازی وب‌کم AR';
+                statusBadge.textContent = 'حالت لمسی / ماوس + وب‌کم';
+                showToast('وب‌کم واقعیت افزوده غیرفعال شد.');
+                return;
+            }
+
+            try {
+                audioEngine.init();
+                btnText.textContent = 'در حال بارگذاری مدل دست...';
+
+                if (!handsInstance) {
+                    handsInstance = new Hands({
+                        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                    });
+                    handsInstance.setOptions({
+                        maxNumHands: 2,
+                        modelComplexity: 1,
+                        minDetectionConfidence: 0.65,
+                        minTrackingConfidence: 0.65
+                    });
+                    handsInstance.onResults(onMediaPipeHandsResults);
+                }
+
+                cameraInstance = new Camera(videoEl, {
+                    onFrame: async () => {
+                        if (appState.cameraActive && handsInstance) {
+                            await handsInstance.send({ image: videoEl });
+                        }
+                    },
+                    width: 1280,
+                    height: 720
+                });
+
+                await cameraInstance.start();
+                appState.cameraActive = true;
+                btnText.textContent = 'توقف وب‌کم AR';
+                statusBadge.textContent = 'ردیابی زنده دو دست فعال (AR Live)';
+                showToast('وب‌کم فعال شد! دستان خود را در برابر دوربین بگیرید و با حرکت شلاقی مچ بنوازید.');
+            } catch (err) {
+                console.error('Camera initialization error:', err);
+                btnText.textContent = 'فعال‌سازی وب‌کم AR';
+                showToast('دسترسی به وب‌کم امکان‌پذیر نشد. می‌توانید با ماوس، صفحه لمسی یا کیبورد بنوازید.');
+            }
+        }
+
+        function onMediaPipeHandsResults(results) {
+            const nowMs = performance.now();
+            const W = canvas.width;
+            const H = canvas.height;
+
+            if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+                return;
+            }
+
+            for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                const lm = results.multiHandLandmarks[i];
+                // Determine physical Left vs Right hand in mirrored view by X position or MediaPipe label
+                const mirroredWristX = (1.0 - lm[0].x) * W;
+                const label = results.multiHandedness?.[i]?.label || '';
+                // Note: MediaPipe handedness assumes unmirrored image; in mirrored view 'Left' label corresponds to user's Right hand
+                const isRightSide = label ? (label === 'Left') : (mirroredWristX >= W * 0.5);
+
+                const ctrl = isRightSide ? rightHandCtrl : leftHandCtrl;
+                ctrl.updateFromMediaPipe(lm, W, H, nowMs, {
+                    strikeThreshold: appState.strikeThreshold,
+                    travelLockThreshold: appState.travelLockThreshold
+                });
+            }
+        }
+
+        /**
+         * ============================================================================
+         * 7. INTERACTIVE MOUSE/TOUCH FALLBACK, TOMBAK METRONOME & DEMO ARPEGGIO
+         * ============================================================================
+         */
+        function setupInteractions() {
+            const resizeCanvas = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                recomputeSantoorGeometry();
+            };
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // Mouse / Touch Virtual Mezrab (allows testing the exact same 4-stage kinematics or direct strike)
+            canvas.addEventListener('pointerdown', (e) => {
+                audioEngine.init();
+                appState.pointer.active = true;
+                appState.pointer.x = e.clientX;
+                appState.pointer.y = e.clientY;
+                const target = findSantoorTargetAt(e.clientX, e.clientY);
+
+                if (e.button === 2 || e.shiftKey) {
+                    // Right-click or Shift+Click triggers continuous RIZ_MODE locked to this Kharak
+                    appState.pointer.isRizDown = true;
+                    appState.pointer.lockedTarget = target;
+                    if (target) triggerSantoorStrike(target, 0.82, 'right', 'ریز پیوسته (Riz Tremolo)');
+                } else if (target) {
+                    triggerSantoorStrike(target, 0.85, e.clientX >= canvas.width * 0.5 ? 'right' : 'left', 'تک‌مضراب (Single Strike)');
+                }
+            });
+
+            window.addEventListener('contextmenu', (e) => {
+                if (e.target === canvas) e.preventDefault();
+            });
+
+            canvas.addEventListener('pointermove', (e) => {
+                const nowMs = performance.now();
+                const dt = Math.max(4, nowMs - (appState.pointer.lastMoveTime || (nowMs - 16)));
+                const vx = (e.clientX - appState.pointer.x) / dt;
+                const vy = (e.clientY - appState.pointer.y) / dt;
+                const speed = Math.hypot(vx, vy);
+
+                appState.pointer.prevX = appState.pointer.x;
+                appState.pointer.prevY = appState.pointer.y;
+                appState.pointer.x = e.clientX;
+                appState.pointer.y = e.clientY;
+                appState.pointer.lastMoveTime = nowMs;
+                appState.pointer.active = true;
+
+                // Update telemetry hover preview when webcam is off
+                if (!rightHandCtrl.active && !leftHandCtrl.active) {
+                    const hoverT = findSantoorTargetAt(e.clientX, e.clientY);
+                    document.getElementById('rhHoverTarget').textContent = hoverT
+                        ? `خرک ${hoverT.kharak} (${hoverT.noteName.split(' ')[0]})`
+                        : '---';
+                    document.getElementById('rhVelRel').textContent = `${speed.toFixed(2)} px/ms`;
+                    document.getElementById('rhVelBar').style.width = `${Math.min(100, speed * 45)}%`;
+                }
+            });
+
+            window.addEventListener('pointerup', () => {
+                appState.pointer.isRizDown = false;
+                appState.pointer.lockedTarget = null;
+            });
+
+            // Continuous Riz loop when holding Right-Click or 'R' key
+            setInterval(() => {
+                if (appState.pointer.isRizDown && appState.pointer.lockedTarget) {
+                    const vel = 0.65 + (Math.random() - 0.5) * 0.22;
+                    triggerSantoorStrike(appState.pointer.lockedTarget, vel, 'right', 'ریز پیوسته (Riz Tremolo)');
+                }
+            }, 58);
+
+            // Keyboard Shortcuts:
+            // Space = Palm Mute (Khafeh Kardan)
+            // R = Hold Riz on hovered Kharak
+            // Keys 1..9 = Strike Sefid Kharak 1..9 (Shift + 1..9 = Strike Zard Kharak 1..9)
+            window.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    audioEngine.dampStrings('all');
+                    spawnDampWaveEffect(canvas.width * 0.5, canvas.height * 0.54, 'zard');
+                    updateTelemetryLastNote(null, 0, 'خفه کردن سیم‌ها با کف دست (Palm Damping)');
+                } else if (e.key === 'r' || e.key === 'R' || e.key === 'ق') {
+                    if (!appState.pointer.isRizDown) {
+                        const t = findSantoorTargetAt(appState.pointer.x, appState.pointer.y);
+                        if (t) {
+                            appState.pointer.isRizDown = true;
+                            appState.pointer.lockedTarget = t;
+                        }
+                    }
+                } else if (e.key >= '1' && e.key <= '9') {
+                    const idx = parseInt(e.key, 10) - 1;
+                    const corridor = appState.geom.corridors[idx];
+                    if (corridor) {
+                        const target = e.shiftKey ? corridor.zones.zard : corridor.zones.sefid;
+                        triggerSantoorStrike(
+                            { ...target, yMid: corridor.yMid, bridgeProx: 0.35 },
+                            0.85,
+                            e.shiftKey ? 'right' : 'left',
+                            'تک‌مضراب کیبورد'
+                        );
+                    }
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'r' || e.key === 'R' || e.key === 'ق') {
+                    appState.pointer.isRizDown = false;
+                    appState.pointer.lockedTarget = null;
+                }
+            });
+
+            // UI Controls Wiring
+            document.getElementById('dastgahSelect').addEventListener('change', (e) => {
+                appState.currentDastgahKey = e.target.value;
+                recomputeSantoorGeometry();
+                const d = DASTGAH_TUNINGS[appState.currentDastgahKey];
+                showToast(`کوک سنتور تغییر یافت: ${d.name}`);
+            });
+
+            document.getElementById('mezrabTypeBtn').addEventListener('click', () => {
+                appState.isWoodMezrab = !appState.isWoodMezrab;
+                const dot = document.getElementById('mezrabTypeDot');
+                const txt = document.getElementById('mezrabTypeText');
+                if (appState.isWoodMezrab) {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]';
+                    txt.textContent = 'مضراب: چوبی لخت (پرزنگ)';
+                } else {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+                    txt.textContent = 'مضراب: نمدی (مخملی)';
+                }
+            });
+
+            document.getElementById('autoRollCheck').addEventListener('change', (e) => {
+                appState.autoForearmRoll = e.target.checked;
+            });
+
+            document.getElementById('cameraToggleBtn').addEventListener('click', toggleWebcamAR);
+
+            // Settings Drawer
+            const drawer = document.getElementById('settingsDrawer');
+            document.getElementById('settingsToggleBtn').addEventListener('click', () => {
+                drawer.classList.toggle('hidden');
+            });
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+                drawer.classList.add('hidden');
+            });
+
+            // Minimize HUD
+            const hudBody = document.getElementById('hudBodyContent');
+            document.getElementById('minimizeHudBtn').addEventListener('click', (e) => {
+                const isHidden = hudBody.classList.toggle('hidden');
+                e.target.textContent = isHidden ? 'باز کردن' : 'کوچک‌نمایی';
+            });
+
+            // Calibration Sliders
+            document.getElementById('santoorScaleSlider').addEventListener('input', (e) => {
+                appState.scale = parseInt(e.target.value, 10) / 100;
+                document.getElementById('scaleValLabel').textContent = `${e.target.value}%`;
+                recomputeSantoorGeometry();
+            });
+            document.getElementById('santoorYSlider').addEventListener('input', (e) => {
+                appState.yOffsetRatio = parseInt(e.target.value, 10) / 100;
+                document.getElementById('yOffsetValLabel').textContent = `${e.target.value}%`;
+                recomputeSantoorGeometry();
+            });
+            document.getElementById('santoorTiltSlider').addEventListener('input', (e) => {
+                appState.tiltDegrees = parseInt(e.target.value, 10);
+                document.getElementById('tiltValLabel').textContent = `${e.target.value}°`;
+                recomputeSantoorGeometry();
+            });
+            document.getElementById('santoorOpacitySlider').addEventListener('input', (e) => {
+                appState.bodyOpacity = parseInt(e.target.value, 10) / 100;
+                document.getElementById('opacityValLabel').textContent = `${e.target.value}%`;
+            });
+            document.getElementById('strikeThreshSlider').addEventListener('input', (e) => {
+                appState.strikeThreshold = parseInt(e.target.value, 10) / 100;
+                document.getElementById('strikeThreshLabel').textContent = `${appState.strikeThreshold.toFixed(2)} px/ms`;
+            });
+            document.getElementById('travelLockSlider').addEventListener('input', (e) => {
+                appState.travelLockThreshold = parseInt(e.target.value, 10) / 100;
+                document.getElementById('travelLockLabel').textContent = `${appState.travelLockThreshold.toFixed(2)} px/ms`;
+            });
+            document.getElementById('showCorridorsCheck').addEventListener('change', (e) => {
+                appState.showCorridors = e.target.checked;
+            });
+
+            // Custom WAV/MP3 Sample Loader
+            document.getElementById('customSampleInput').addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                    audioEngine.init();
+                    const arrayBuf = await file.arrayBuffer();
+                    audioEngine.customSampleBuffer = await audioEngine.ctx.decodeAudioData(arrayBuf);
+                    document.getElementById('sampleStatusMsg').classList.remove('hidden');
+                    showToast(`سمپل «${file.name}» بارگذاری و روی ۳۶ نت سنتور کوک شد.`);
+                } catch (err) {
+                    showToast('خطا در رمزگشایی فایل صوتی. لطفاً یک فایل WAV یا MP3 معتبر انتخاب کنید.');
+                }
+            });
+            document.getElementById('sampleBaseFreqInput').addEventListener('change', (e) => {
+                audioEngine.customSampleBaseFreq = parseFloat(e.target.value) || 392.0;
+            });
+            document.getElementById('sampleMixSlider').addEventListener('input', (e) => {
+                audioEngine.customSampleMix = parseInt(e.target.value, 10) / 100;
+                document.getElementById('sampleMixLabel').textContent = `${e.target.value}%`;
+            });
+
+            // Record Performance Button
+            document.getElementById('recordBtn').addEventListener('click', () => {
+                const recActive = audioEngine.toggleRecording();
+                const dot = document.getElementById('recordDot');
+                const txt = document.getElementById('recordBtnText');
+                if (recActive) {
+                    dot.classList.add('pulse-rec');
+                    txt.textContent = 'توقف و دانلود';
+                    showToast('ضبط اجرای سنتور آغاز شد...');
+                } else {
+                    dot.classList.remove('pulse-rec');
+                    txt.textContent = 'ضبط اجرا';
+                    showToast('فایل صوتی اجرای شما آماده دانلود شد.');
+                }
+            });
+
+            // Demo Chaharmazrab / Arpeggio Player
+            document.getElementById('demoPlayBtn').addEventListener('click', playPersianChaharmazrabDemo);
+
+            // Tombak Metronome Engine
+            setupTombakSequencer();
+        }
+
+        function setupTombakSequencer() {
+            let tombakTimer = null;
+            let stepIdx = 0;
+            let isPlaying = false;
+
+            const patterns = {
+                '6_8': ['tom', 'pelang', 'bak', 'tom', 'pelang', 'bak'],
+                '2_4': ['tom', 'pelang', 'bak', 'pelang'],
+                '4_4': ['tom', 'pelang', 'bak', 'pelang', 'tom', 'tom', 'bak', 'pelang']
+            };
+
+            const scheduleLoop = () => {
+                clearInterval(tombakTimer);
+                if (!isPlaying) return;
+                const bpm = Math.max(40, Math.min(200, parseInt(document.getElementById('bpmInput').value, 10) || 108));
+                const rhythmKey = document.getElementById('rhythmSelect').value;
+                const subDiv = rhythmKey === '6_8' ? 3 : 2;
+                const intervalMs = (60000 / bpm) / subDiv;
+
+                tombakTimer = setInterval(() => {
+                    const pat = patterns[rhythmKey] || patterns['6_8'];
+                    const stroke = pat[stepIdx % pat.length];
+                    audioEngine.playTombakStroke(stroke);
+                    const light = document.getElementById('tombakLight');
+                    light.className = stroke === 'tom'
+                        ? 'w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]'
+                        : 'w-2 h-2 rounded-full bg-emerald-400';
+                    stepIdx++;
+                }, intervalMs);
+            };
+
+            document.getElementById('tombakToggleBtn').addEventListener('click', () => {
+                audioEngine.init();
+                isPlaying = !isPlaying;
+                const btn = document.getElementById('tombakToggleBtn');
+                if (isPlaying) {
+                    stepIdx = 0;
+                    btn.innerHTML = `<span id="tombakLight" class="w-2 h-2 rounded-full bg-emerald-400"></span><span>تمبک: روشن</span>`;
+                    scheduleLoop();
+                } else {
+                    clearInterval(tombakTimer);
+                    btn.innerHTML = `<span id="tombakLight" class="w-2 h-2 rounded-full bg-stone-500"></span><span>تمبک: خاموش</span>`;
+                }
+            });
+
+            document.getElementById('rhythmSelect').addEventListener('change', () => {
+                if (isPlaying) scheduleLoop();
+            });
+            document.getElementById('bpmInput').addEventListener('change', () => {
+                if (isPlaying) scheduleLoop();
+            });
+        }
+
+        function playPersianChaharmazrabDemo() {
+            audioEngine.init();
+            // Traditional Santoor Chaharmazrab pattern across Zard, Sefid, and Posht-e-Kharak
+            const seq = [
+                { k: 3, z: 'zard', v: 0.92, d: 0 },
+                { k: 3, z: 'sefid', v: 0.78, d: 130 },
+                { k: 4, z: 'sefid', v: 0.85, d: 260 }, // Highlights the microtonal Koron interval (e.g., A Koron 427.47Hz)
+                { k: 3, z: 'sefid', v: 0.75, d: 390 },
+                { k: 5, z: 'sefid', v: 0.88, d: 520 },
+                { k: 3, z: 'sefid', v: 0.74, d: 650 },
+                { k: 6, z: 'sefid', v: 0.94, d: 780 },
+                { k: 5, z: 'sefid', v: 0.80, d: 910 },
+                { k: 4, z: 'sefid', v: 0.84, d: 1040 },
+                { k: 3, z: 'sefid', v: 0.88, d: 1170 },
+                { k: 3, z: 'posht', v: 0.90, d: 1320 },
+                { k: 3, z: 'sefid', v: 0.95, d: 1480 }
+            ];
+
+            seq.forEach(step => {
+                setTimeout(() => {
+                    const c = appState.geom.corridors[step.k - 1];
+                    if (!c) return;
+                    const target = c.zones[step.z];
+                    triggerSantoorStrike(
+                        { ...target, yMid: c.yMid, bridgeProx: 0.35 },
+                        step.v,
+                        step.z === 'zard' ? 'right' : 'left',
+                        'چهارمضراب آزمایشی'
+                    );
+                }, step.d);
+            });
+        }
+
+        // Start Application Loop on Window Load
+        window.onload = function () {
+            setupInteractions();
+            requestAnimationFrame(renderScene);
+        };
+    </script>
 </body>
 </html>
